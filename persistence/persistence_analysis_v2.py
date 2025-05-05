@@ -167,6 +167,23 @@ def cluster_and_visualize_distances(distance_matrix, embedding_method):
         print('Performing MDS emnedding')
         mds = MDS(n_components=2, dissimilarity='precomputed', random_state=42, normalized_stress='auto')
         embeddings = mds.fit_transform(distance_matrix)
+        
+        # compute stress and R^2 metics for MDS embedding
+        n = distance_matrix.shape[0]
+        # get upper‐triangular entries
+        i, j = np.triu_indices(n, k=1)
+        d_orig = distance_matrix[i, j]
+        # compute embedded distances
+        diffs = embeddings[:, None, :] - embeddings[None, :, :]
+        D_embed = np.linalg.norm(diffs, axis=2)
+        d_hat = D_embed[i, j]
+
+        # compute R^2
+        RSS = np.sum((d_orig - d_hat)**2)
+        TSS = np.sum(d_orig**2)
+        R2 = 1 - RSS/TSS
+
+        print(f"Embedding R² = {R2:.3f}, Stress = {np.sqrt(RSS/TSS):.3f}")
     
     # Cluster selection using GMM and BIC
     print('Cluster selection')
@@ -216,7 +233,7 @@ def cluster_and_visualize_distances(distance_matrix, embedding_method):
         plt.legend(handles, [f'Cluster {i+1}' for i in range(optimal_k)], 
                 loc='best', title='Clusters')
         
-        plt.title(f'MDS Embedding with {optimal_k} Clusters')
+        plt.title(f'MDS Embedding with {optimal_k} Clusters /n Embedding R² = {R2:.3f}, Stress = {np.sqrt(RSS/TSS):.3f}')
         plt.xlabel('MDS Dimension 1')
         plt.ylabel('MDS Dimension 2')
         plt.grid(alpha=0.3)
@@ -480,5 +497,3 @@ print('Analyzing PDs')
 PDs_distance_matrix = compute_pds_distences(PDs_H0, PDs_H1)
 
 cluster_and_visualize_distances(PDs_distance_matrix, 'MDS')
-
-    
