@@ -13,7 +13,8 @@ import persim
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
 from sklearn.manifold import MDS
-#from sklearn.cluster import KMeans
+from sklearn.manifold import TSNE
+from sklearn.cluster import KMeans
 import seaborn as sns
 
 # Set modern scientific style
@@ -99,8 +100,21 @@ from sklearn.mixture import GaussianMixture
 from matplotlib.cm import tab20
 from scipy.spatial.distance import squareform
 
-def process_and_visualize_pds(PDs_H0, PDs_H1):
-    """Enhanced version with GMM clustering and model selection"""
+def compute_pds_distences(PDs_H0, PDs_H1):
+    '''
+    Computes pairwise intersubject Wasserstien distances based on H0 and H1 PDs' birth-death lists.
+    Intermediate matrices saved as .npy in script directory.
+
+    Args:
+        PDs_H0 (list): list of H0 PDs features (connected components) in for every subject.
+        Features are stored in np.array of shape (n0_i, 2) (n0_i = number of H0‐features for subject i), 
+        and rows are (birth, death) pairs
+        PDs_H1 (list): list of H1 PDs features (loops) in for every subject.
+        Features are stored in np.array of shape (n1_i, 2) (n1_i = number of H1‐features for subject i), and rows are (birth, death) pairs
+
+    Returns:
+        distance_matrix (np.array): 2d-array of pairwise intersubject Wasserstein distances
+    '''
     
     # script direcory
     script_path = os.path.abspath(__file__) # full path to this script
@@ -124,15 +138,35 @@ def process_and_visualize_pds(PDs_H0, PDs_H1):
             fdir = os.path.join(script_dir, fname)
             np.save(fdir, distance_matrix)
             print(f'Saved intermediate matrix to "{fname}"')
+    
+    return distance_matrix
+
+def cluster_and_visualize_distances(distance_matrix, embedding_method):
+    '''
+    1) Perfrorms embedding of distances into 2d space;
+    2) Calculates optimal number of clusters via BIC
+    3) Performs GMM clustering for top-3 BIC-scoring cluster numbers
+    4) Plots BIC results and clustering in 2 MDS-based dimensions
+
+    Args:
+        distance_matrix (np.array): 2d-array of pairwise intersubject Wasserstein distances
+        embedding (str): embedding algorithm to use, 'MDS' or 'TSNE' avalible, 'MDS' by default
+    ''' 
+    num_graphs = len(np.diag(distance_matrix)) # get number of subjects
 
     # Convert to condensed form for MDS
-    #condensed_dist = squareform(distance_matrix, checks=False)
+    condensed_dist = squareform(distance_matrix, checks=False)
     
-    # Metric MDS embedding
-    print('MDS emnedding')
-    mds = MDS(n_components=2, dissimilarity='precomputed', 
-             random_state=42, normalized_stress='auto')
-    embeddings = mds.fit_transform(distance_matrix)
+    if embedding_method == 'TSNE':
+        # MDS embedding
+        print('Performing TSNE emnedding')
+        tsne = TSNE(n_components=2, learning_rate='auto', init='random', random_state=42)
+        embeddings = tsne.fit_transform(distance_matrix)
+    else:
+        # Metric MDS embedding
+        print('Performing MDS emnedding')
+        mds = MDS(n_components=2, dissimilarity='precomputed', random_state=42, normalized_stress='auto')
+        embeddings = mds.fit_transform(distance_matrix)
     
     # Cluster selection using GMM and BIC
     print('Cluster selection')
@@ -149,38 +183,46 @@ def process_and_visualize_pds(PDs_H0, PDs_H1):
         gmm.fit(embeddings)
         bic_scores.append(gmm.bic(embeddings))
     
-    optimal_k = cluster_range[np.argmin(bic_scores)]
-    plt.plot(cluster_range, bic_scores, 'o-', color='#2ca02c')
-    plt.axvline(optimal_k, color='#d62728', linestyle='--')
-    plt.xlabel('Number of Clusters')
-    plt.ylabel('BIC Score')
-    plt.title(f'Optimal Clusters: {optimal_k}')
-    plt.grid(alpha=0.3)
-    
-    # Plot 2: MDS embedding with optimal clusters
-    plt.subplot(1, 2, 2)
-    gmm = GaussianMixture(n_components=optimal_k, random_state=42)
-    #clusters = gmm.fit_predict(embeddings)
-    
-    # Create cyclical colormap for clusters
-    #colors = [tab20(i % 20) for i in clusters]
-    
-    #scatter = plt.scatter(embeddings[:, 0], embeddings[:, 1], c=colors, s=150, edgecolor='w', linewidth=1, alpha=0.9)
-    
-    # Create legend for clusters
-    handles = [plt.Line2D([0], [0], marker='o', color='w', 
-               markerfacecolor=tab20(i), markersize=10)
-                for i in range(optimal_k)]
-    plt.legend(handles, [f'Cluster {i+1}' for i in range(optimal_k)], 
-              loc='best', title='Clusters')
-    
-    plt.title(f'MDS Embedding with {optimal_k} Clusters')
-    plt.xlabel('MDS Dimension 1')
-    plt.ylabel('MDS Dimension 2')
-    plt.grid(alpha=0.3)
-    
-    plt.tight_layout()
-    plt.show()
+    #optimal_k = cluster_range[np.argmin(bic_scores)] # select k for final clustering
+
+    # Select top-3 k values to perform clustering
+    ks = np.array(list(cluster_range)) # turn into an array
+    sorted_idx = np.argsort(bic_scores) # get the indices that would sort bic_scores ascending   
+    top3_idx = sorted_idx[:3] # pick the first three indices (3 smallest BIC values)
+    optimal_ks = ks[top3_idx] # select the corresponding k-values
+
+    for optimal_k in optimal_ks:
+        plt.plot(cluster_range, bic_scores, 'o-', color='#2ca02c')
+        plt.axvline(optimal_k, color='#d62728', linestyle='--')
+        plt.xlabel('Number of Clusters')
+        plt.ylabel('BIC Score')
+        plt.title(f'Optimal Clusters: {optimal_k}')
+        plt.grid(alpha=0.3)
+        
+        # Plot 2: MDS embedding with optimal clusters
+        plt.subplot(1, 2, 2)
+        gmm = GaussianMixture(n_components=optimal_k, random_state=42)
+        clusters = gmm.fit_predict(embeddings)
+        
+        # Create cyclical colormap for clusters
+        colors = [tab20(i % 20) for i in clusters]
+        
+        scatter = plt.scatter(embeddings[:, 0], embeddings[:, 1], c=colors, s=150, edgecolor='w', linewidth=1, alpha=0.9)
+        
+        # Create legend for clusters
+        handles = [plt.Line2D([0], [0], marker='o', color='w', 
+                markerfacecolor=tab20(i), markersize=10)
+                    for i in range(optimal_k)]
+        plt.legend(handles, [f'Cluster {i+1}' for i in range(optimal_k)], 
+                loc='best', title='Clusters')
+        
+        plt.title(f'MDS Embedding with {optimal_k} Clusters')
+        plt.xlabel('MDS Dimension 1')
+        plt.ylabel('MDS Dimension 2')
+        plt.grid(alpha=0.3)
+        
+        plt.tight_layout()
+        plt.show()
     
 import os
 import re
@@ -351,9 +393,9 @@ script_path = os.path.abspath(__file__) # full path to this script
 script_dir = os.path.dirname(script_path) # directory containing the script
     
 # Directory containing the connectivity matrices
-#directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder'
+directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder'
 #directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum'
-directory = os.path.join(script_dir, 'rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum')
+#directory = os.path.join(script_dir, 'rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum')
 
 PDs_H0, PDs_H1, dropped_subjects = [], [], []
 processed = 0
@@ -435,7 +477,8 @@ plot_persistence_diagram(PDs_H0[0], PDs_H1[0], "Persistence Diagram")
 
 # Process and visualize all diagrams
 print('Analyzing PDs')
-process_and_visualize_pds(PDs_H0, PDs_H1)
+PDs_distance_matrix = compute_pds_distences(PDs_H0, PDs_H1)
 
+cluster_and_visualize_distances(PDs_distance_matrix, 'MDS')
 
     
