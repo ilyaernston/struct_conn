@@ -384,7 +384,7 @@ def cluster_and_visualize_distances(
             plt.close(fig)
             print(f"Saved clustering (pp={perp}, k={best_k}) → {out_png}")
 
-        # optionally save full TSNE results
+        # save TSNE labels (for all pp values)
         full_csv = os.path.join(save_dir, "PDs_labels_tsne.csv")
         labels_df.to_csv(full_csv, index=False)
         print(f"→ Saved full TSNE labels to {full_csv}")
@@ -532,8 +532,8 @@ def preprocess_and_compute_persistence(
 ### DATA LOADING AND PROCESSING ###
 
 # Directory containing the connectivity matrices
-directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder'
-#directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum'
+#directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder'
+directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum'
 #directory = os.path.join(script_dir, 'rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum')
 mapping = '/Users/elijah/Desktop/thesis/Connectomes/mapping.csv'
 

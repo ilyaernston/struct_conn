@@ -248,7 +248,7 @@ def cluster_and_visualize_distances(
             # cluster & plot
             gm = GaussianMixture(n_components=best_k, random_state=42)
             labs = gm.fit_predict(emb)
-            col = f'PD_cluster_{perp}(k={best_k};bic={best_bic})' 
+            col = f'PD_cluster(pp={perp};k={best_k};bic={best_bic})' 
             labels_df[col] = labs
 
             fig, ax = plt.subplots(figsize=(7,6))
@@ -262,7 +262,7 @@ def cluster_and_visualize_distances(
             plt.close(fig)
             print(f"Saved clustering (pp={perp}, k={best_k}) → {out_png}")
 
-        # optionally save full TSNE results
+        # save TSNE labels (for all pp values)
         full_csv = os.path.join(save_dir, "PDs_labels_tsne.csv")
         labels_df.to_csv(full_csv, index=False)
         print(f"→ Saved full TSNE labels to {full_csv}")
@@ -293,7 +293,7 @@ def cluster_and_visualize_distances(
         for k, bic in zip(top3, bics):
             gm = GaussianMixture(n_components=k, random_state=42)
             labs = gm.fit_predict(emb)
-            col = f'{k}_clusters(bic={bic:.3f})'
+            col = f'PD_cluster(k={k};bic={bic:.3f})'
             labels_df[col] = labs
 
             fig, ax = plt.subplots(figsize=(7,6))
@@ -312,9 +312,7 @@ def cluster_and_visualize_distances(
         labels_df.to_csv(out_csv, index=False)
         print(f"→ Saved MDS labels to {out_csv}")
 
-distance_matrix = pd.read_csv('/Users/elijah/Desktop/thesis/struct_conn_output/distance_matrix_100_subjects.csv', index_col=0, header=0)
-out_dir = '/Users/elijah/Desktop/thesis/tsne_tests_1'
+distance_matrix = pd.read_csv('/Users/elijah/Desktop/thesis/struct_conn_output/distance_matrix_803_subjects.csv', index_col=0, header=0)
+out_dir = '/Users/elijah/Desktop/thesis/tests_2'
 
-cluster_and_visualize_distances(distance_matrix=distance_matrix, embedding_method='tsne', output_dir=out_dir)
-
-np.savetxt('/Users/elijah/Desktop/thesis/distance_matrix.csv', distance_matrix, delimiter=',')
+cluster_and_visualize_distances(distance_matrix=distance_matrix, embedding_method='mds', output_dir=out_dir)
