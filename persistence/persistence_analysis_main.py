@@ -537,7 +537,7 @@ directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016
 #directory = os.path.join(script_dir, 'rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum')
 mapping = '/Users/elijah/Desktop/thesis/Connectomes/mapping.csv'
 
-output_directory = '/Users/elijah/Desktop/thesis/struct_conn_output'
+output_directory = '/Users/elijah/Desktop/thesis/struct_conn_output_speedtest'
 
 PDs_H0, PDs_H1, subject_ids, dropped_subjects = preprocess_and_compute_persistence(directory, output_dir=output_directory, mapping_path=mapping)
 

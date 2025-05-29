@@ -23,50 +23,21 @@ import time
 import pandas as pd 
 import random
 
-#%%
+### HEPLER FUNCTIONS ###
 
+def drop_cerebellum(
+        matrix : np.ndarray, 
+        mapping_path : str):
+    '''
+    Args:
+        matrix (np.ndarray): adjecency matrix as np.array
+        mapping_path (str): path to mapping file in .csv
 
-def create_reversed_matrix(adj_matrix):
-    adj_matrix_d = adj_matrix.flatten()
-    adj_matrix_d = adj_matrix_d[adj_matrix_d != 0]
-    ref_value = adj_matrix_d.max() + adj_matrix_d.min()
-    rev_matrix = ref_value - adj_matrix
-    rev_matrix[rev_matrix == ref_value] = 0
-    return rev_matrix
-
-
-def compute_small_world_indices(matrix):
-    # Create an igraph graph from the adjacency matrix
-    g = ig.Graph.Adjacency((matrix > 0).tolist())
-
-    # Calculate average shortest path length
-    avg_path_length = g.average_path_length()
-
-    # Calculate clustering coefficient
-    clustering_coeff = g.transitivity_undirected()
-
-    # Calculate random graph for comparison
-    n = g.vcount()
-    m = g.ecount()
-    p = 2 * m / (n * (n - 1))  # Probability for Erdős-Rényi graph
-    rand_graph = ig.Graph.Erdos_Renyi(n=n, p=p)
-    rand_avg_path_length = rand_graph.average_path_length()
-    rand_clustering_coeff = rand_graph.transitivity_undirected()
-
-    # Calculate small-world indices
-    sigma = (clustering_coeff / rand_clustering_coeff) / (avg_path_length / rand_avg_path_length)
-    omega = (rand_avg_path_length / avg_path_length) - (clustering_coeff / rand_clustering_coeff)
-
-    return sigma, omega, avg_path_length, clustering_coeff
-
-def drop_cerebellum(matrix):
+    Returns:
+        filtered_matrix (np.ndarray): adjecency matrix as np.array with cerebellum nodes dropped 
+    '''
     
-    # load mapping file
-    script_path = os.path.abspath(__file__) # full path to this script
-    script_dir = os.path.dirname(script_path) # directory containing the script
-    mapping_path = script_dir + "/mapping.csv"
     mapping = pd.read_csv(mapping_path)
-    
     to_drop = mapping.loc[mapping['Lobe'] == 'Cerebellum', 'index'].values
      
     # build a boolean mask of size N
@@ -78,7 +49,9 @@ def drop_cerebellum(matrix):
     
     return filtered_matrix
 
-def connect_components(graph):
+def connect_components(
+        graph : nx.Graph, 
+        mapping_path : str):
     '''
     Checks if graph has multiple connected components.
     If so, connects smaller components to the anatomacallly closest node in the largest component .
@@ -89,6 +62,8 @@ def connect_components(graph):
     ----------
     graph : nx.Graph
         networkx graph to process
+    mapping_path : str
+        path to mapping file in .csv
         
     Returns
     ----------    
@@ -99,12 +74,8 @@ def connect_components(graph):
     
     '''
     
-    # load mapping file
-    script_path = os.path.abspath(__file__) # full path to this script
-    script_dir = os.path.dirname(script_path) # directory containing the script
-    mapping_path = script_dir + "/mapping.csv"
     mapping = pd.read_csv(mapping_path)
-    
+
     conn_nodes_list = []
     
     # check for unconnected components
@@ -176,17 +147,52 @@ def connect_components(graph):
         connected_graph = graph
         
     return connected_graph, conn_nodes_list
-        
 
-def compute_metrics(matrix):
+### GRAPH METRICS ESTIMATION FUNCTIONS ###
+
+def create_reversed_matrix(adj_matrix):
+    adj_matrix_d = adj_matrix.flatten()
+    adj_matrix_d = adj_matrix_d[adj_matrix_d != 0]
+    ref_value = adj_matrix_d.max() + adj_matrix_d.min()
+    rev_matrix = ref_value - adj_matrix
+    rev_matrix[rev_matrix == ref_value] = 0
+    return rev_matrix
+
+def compute_small_world_indices(matrix):
+    # Create an igraph graph from the adjacency matrix
+    g = ig.Graph.Adjacency((matrix > 0).tolist())
+
+    # Calculate average shortest path length
+    avg_path_length = g.average_path_length()
+
+    # Calculate clustering coefficient
+    clustering_coeff = g.transitivity_undirected()
+
+    # Calculate random graph for comparison
+    n = g.vcount()
+    m = g.ecount()
+    p = 2 * m / (n * (n - 1))  # Probability for Erdős-Rényi graph
+    rand_graph = ig.Graph.Erdos_Renyi(n=n, p=p)
+    rand_avg_path_length = rand_graph.average_path_length()
+    rand_clustering_coeff = rand_graph.transitivity_undirected()
+
+    # Calculate small-world indices
+    sigma = (clustering_coeff / rand_clustering_coeff) / (avg_path_length / rand_avg_path_length)
+    omega = (rand_avg_path_length / avg_path_length) - (clustering_coeff / rand_clustering_coeff)
+
+    return sigma, omega, avg_path_length, clustering_coeff 
+
+### PROCESSING FUNCTION ###
+
+def compute_metrics(
+        matrix : np.ndarray, 
+        mapping_path : str):
     
     # zero out diagonal
     np.fill_diagonal(matrix, 0)
     
-    #mapping = pd.read_csv('/Users/elijah/Desktop/thesis/Connectomes/fan2016/Copy of space-MNI152_atlas-fan2016_res-1mm_dseg.csv')
-
     # drop cerebellum from ajecency matrix
-    matrix = drop_cerebellum(matrix)
+    matrix = drop_cerebellum(matrix, mapping_path=mapping_path)
     
     # min-max normalization
     #matrix = (matrix - np.min(matrix)) / (np.max(matrix) - np.min(matrix))
@@ -196,10 +202,10 @@ def compute_metrics(matrix):
     #n_components = nx.number_connected_components(graph) # count components in inital graph
     
     # check for unconnected components and construct edges (if needed)
-    graph, conn_nodes = connect_components(graph)
+    graph, conn_nodes = connect_components(graph, mapping_path=mapping_path)
     
     # COMPUTE CONNECTIVITY MEASURES #
-    n_components = nx.number_connected_components(graph)
+    n_components = nx.number_connected_components(graph) # double-check: cound components in resulting graph
     density = nx.density(graph)
 
     sw_sigma, sw_omega, avg_path, clust = compute_small_world_indices(matrix)
@@ -228,11 +234,30 @@ def compute_metrics(matrix):
         avg_path,
         k_mean,
         density,
-        n_components, # n of components in initial graph
+        n_components,
         conn_nodes
     )
 
-def process_files(directory):
+def process_files(
+        directory : str, 
+        mapping_dir : str = None):
+    '''_summary_
+
+    Args:
+        directory (str) :   path to directory, where connectivity matrices are stored is .csv
+        mapping_dir (str, optional) :   path to directory with mapping table, named 'mapping.csv'. 
+                                        Defaults to None, then searches for mapping file in script's directory.
+
+    Returns:
+        _type_: _description_
+    '''
+    # Determine the directory of the current script if mapping_dir not provided
+    if mapping_dir is None:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        mapping_path = os.path.join(script_dir, 'mapping.csv')
+    else:
+        mapping_path = os.path.join(mapping_dir, 'mapping.csv')
+
     results = []
     # Loop through CSV files in the directory
     for filename in os.listdir(directory):
@@ -245,7 +270,7 @@ def process_files(directory):
                 matrix = np.loadtxt(filepath, delimiter=',', dtype=float)
 
                 start_time = time.time()
-                metrics = compute_metrics(matrix)
+                metrics = compute_metrics(matrix, mapping_path=mapping_path)
                 end_time = time.time()
                 processing_time = end_time - start_time
 
@@ -262,15 +287,6 @@ def process_files(directory):
     df = pd.DataFrame(results, columns=columns)
     return df
 
-'''
-def parallel_processing(directory):
-    with mp.Pool(processes=mp.cpu_count()) as pool:
-        results_df = process_files(directory)
-    return results_df
-'''
-
-#%%
-
 # APPLY ANALYSIS #
 
 # Directory containing the connectivity matrices
@@ -280,30 +296,29 @@ directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016
 # Process files and compute metrics
 results_df = process_files(directory)
 
+def append_metadata_and_save(
+        metrics_df : pd.DataFrame,
+        output_dir : str = None,
+        mode : str = 'save'
+        ):
+    # APPEND DEMOGRAPHIC DATA AND SAVE #
 
+    # set directory to save or make one in current folder, if none provided
+    save_dir = output_dir or os.getcwd()
+    os.makedirs(save_dir, exist_ok=True)
 
-'''
-def append_metadata
-# APPEND DEMOGRAPHIC DATA AND SAVE #
+    # Load subjects metadata
+    labels_df = pd.read_csv('/Users/elijah/Desktop/thesis/tests_2/all_labels.csv')
+    labels_df['subject_id'] = 'sub-' + labels_df['subject_id']
 
-# Load subjects metadata
-subjects_info = pd.read_csv(('/Users/elijah/Desktop/thesis/Connectomes/subjects.csv'))
-subjects_info = subjects_info.drop(columns = ['Trimmed SubjectCode'])
+    # Merge with metrics df 
+    output_df = metrics_df.merge(labels_df, how = 'inner', on = 'subject_id')
 
-# Merge with metrics df 
-output_df = results_df.merge(subjects_info, how = 'inner', on = 'subject_id')
-'''
+    if mode == 'save':
+        # save measures with appended metadata as .csv
+        out_csv = os.path.join(save_dir, "measures&pd&metadata.csv")
+        output_df.to_csv(out_csv, index=False)
+        print(f"→ Saved labels to {out_csv}")
 
-# save .csv into the same directory
-script_path = os.path.abspath(__file__) # full path to this script
-script_dir = os.path.dirname(script_path) # directory containing the script
-base_name = os.path.splitext(os.path.basename(script_path))[0] # script filename without extension
-
-# define output path: same folder + same name as script file
-output_path = os.path.join(script_dir, base_name + "_output.csv") 
-# sace .csv
-output_df = results_df
-output_df.to_csv(output_path, index=False)
-
-
-
+output_dir = '/Users/elijah/Desktop/thesis/tests_21'
+append_metadata_and_save(results_df, output_dir=output_dir, mode='save')
