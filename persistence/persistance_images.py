@@ -8,6 +8,7 @@ import os
 import re
 import time
 import random
+from tqdm import tqdm
 
 import pandas as pd
 import numpy as np
@@ -262,7 +263,7 @@ if __name__ == '__main__':
     subject_ids = []
     features    = []
 
-    for fname in os.listdir(directory):
+    for fname in tqdm(os.listdir(directory)):
         if not fname.endswith('.csv'):
             continue
         m = re.search(r'sub-([A-Z0-9]+)', fname)
