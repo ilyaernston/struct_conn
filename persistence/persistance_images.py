@@ -1,25 +1,30 @@
+'''
+Script for topological data analysis of structural connectivity via Persistance Images methodology
+'''
+
+# Import dependencies
+
+import os
+import re
+import time
+import random
+
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+
+import networkx as nx
+
 from sklearn import datasets
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
-
-import matplotlib.pyplot as plt
 
 from ripser import Rips, ripser
 from persim import PersImage
 from persim import PersistenceImager
 from persim import plot_diagrams
 
-import networkx as nx
-import os
-import re
-import time
-import random
-
-from ripser import Rips
-from persim import PersistenceImager
-import matplotlib.pyplot as plt
+# Hepler functions (preprocessing)
 
 def drop_cerebellum(matrix, mapping):
     
@@ -150,102 +155,148 @@ def prepocess(matrix, mapping):
 
     return distance_matrix     
 
-from ripser import ripser
-from persim import PersistenceImager
-import numpy as np
-import matplotlib.pyplot as plt
+# PI analysis function
 
-def compute_persistance_images(
+def compute_persistence_images(
         distance_matrix: np.ndarray,
         h_dimension: str = 'both',
-        plot: bool = False,
-        max_death: float = 1.0
+        max_death: float = 1.0,
+        display_plot: bool = False,
+        save_plot: bool = False,
+        subject_id: str = None,
+        output_dir: str = None
     ) -> np.ndarray:
     """
-    Computes persistence-image feature(s) for H0 and/or H1, fitting each imager separately.
+    Computes persistence-image feature(s) for H0 and/or H1.
 
     Args:
         distance_matrix (np.ndarray):  
             Pairwise distance matrix.
         h_dimension (str):  
             One of 'h0', 'h1', or 'both'.
-        plot (bool):  
-            If True, displays the computed image(s).
         max_death (float):  
             Replacement for any infinite death times.
-
+        display_plot (bool):  
+            If True, displays the computed image(s).
+        save_plot (bool):
+            If True, saves PI plots into output_dir/plots.
+        subject_id (str):
+            Identifier used for naming files (e.g. 'sub-ABC123').
+        output_dir (str):
+            Base folder for ‘plots/’. Defaults to this script’s directory.
     Returns:
         feature_vector (np.ndarray):  
             1D array of concatenated PI pixels (H0 then H1 if both).
     """
-    # get the persistence diagrams
-    result = ripser(distance_matrix, maxdim=1, distance_matrix=True)
-    diag_h0, diag_h1 = result['dgms'][0], result['dgms'][1]
+    # determine base folder
+    if output_dir is None:
+        output_dir = os.path.dirname(os.path.abspath(__file__))
+    plots_dir = os.path.join(output_dir, 'plots')
+    if save_plot:
+        os.makedirs(plots_dir, exist_ok=True)
 
-    # clamp infinite deaths
+    # 1) get the persistence diagrams
+    result  = ripser(distance_matrix, maxdim=1, distance_matrix=True)
+    diag_h0 = result['dgms'][0]
+    diag_h1 = result['dgms'][1]
+
+    # 2) clamp infinite deaths
     for diag in (diag_h0, diag_h1):
         infs = np.isinf(diag[:, 1])
         if infs.any():
             diag[infs, 1] = max_death
-    
-    # fit & transform separately
-    max_val = np.max(distance_matrix) # get upper threshold for homologies' birth
-    img_list  = []
-    pimgrs     = {}
+
+    # 3) fit & transform separately
+    max_val = np.max(distance_matrix)
+    img_list = []
+    pimgrs   = {}
 
     if h_dimension in ('h0', 'both'):
-        pimgr0 = PersistenceImager(pixel_size=0.02, birth_range=(0, max_val), pers_range=(0, max_val))
+        pimgr0 = PersistenceImager(pixel_size=0.02,
+                                   birth_range=(0, max_val),
+                                   pers_range=(0, max_val))
         img0 = pimgr0.transform(diag_h0)
         img_list.append(img0)
         pimgrs['h0'] = pimgr0
 
     if h_dimension in ('h1', 'both'):
-        pimgr1 = PersistenceImager(pixel_size=0.02, birth_range=(0, max_val), pers_range=(0, max_val))
+        pimgr1 = PersistenceImager(pixel_size=0.02,
+                                   birth_range=(0, max_val),
+                                   pers_range=(0, max_val))
         img1 = pimgr1.transform(diag_h1)
         img_list.append(img1)
         pimgrs['h1'] = pimgr1
 
-    # 4) stack flattened images into a 2D array
-    #    each row corresponds to one homology dimension
-    imgs_array    = np.array([img.flatten() for img in img_list])
-    # 5) concatenate rows into one long feature vector
+    # 4) flatten & concatenate into feature vector
+    imgs_array     = np.array([img.flatten() for img in img_list])
     feature_vector = imgs_array.flatten()
 
-    # 6) optional plotting
-    if plot and img_list:
-        dims = list(pimgrs.keys())
-        fig, axes = plt.subplots(1, len(dims), figsize=(5*len(dims), 4))
-        if len(dims) == 1:
-            axes = [axes]
-        for ax, dim, img in zip(axes, dims, img_list):
-            pimgrs[dim].plot_image(img, ax=ax)
-            ax.set_title(f"PI of ${dim.upper()}$")
-        plt.tight_layout()
+    # 5) plot
+    dims = list(pimgrs.keys())
+    fig, axes = plt.subplots(1, len(dims), figsize=(5*len(dims), 4))
+    if len(dims) == 1:
+        axes = [axes]
+    for ax, dim, img in zip(axes, dims, img_list):
+        pimgrs[dim].plot_image(img, ax=ax)
+        ax.set_title(f"PI of {dim.upper()}")
+    plt.tight_layout()
+
+    if save_plot and subject_id is not None:
+        fname = f"{subject_id}.png"
+        fig.savefig(os.path.join(plots_dir, fname))
+    if display_plot:
         plt.show()
+    plt.close(fig)
 
     return feature_vector
 
+# Main function
 
-directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder_1'
-#directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum'
-mapping = pd.read_csv('/Users/elijah/Desktop/thesis/Connectomes/mapping.csv')
+if __name__ == '__main__':
+    directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder'
+    #directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum'
+    mapping = pd.read_csv('/Users/elijah/Desktop/thesis/Connectomes/mapping.csv')
 
-subject_ids = []
-features    = []
+    output_directory = '/Users/elijah/Desktop/thesis/test_PI'
 
-for fname in os.listdir(directory):
-    if not fname.endswith('.csv'): 
-        continue
-    m = re.search(r'sub-([A-Z0-9]+)', fname)
-    if not m:
-        continue
+    subject_ids = []
+    features    = []
 
-    sid = m.group(0)
-    mat = np.loadtxt(os.path.join(directory, fname), delimiter=',')
-    dist = prepocess(mat, mapping)
+    for fname in os.listdir(directory):
+        if not fname.endswith('.csv'):
+            continue
+        m = re.search(r'sub-([A-Z0-9]+)', fname)
+        if not m:
+            continue
 
-    vec = compute_persistance_images(distance_matrix=dist, h_dimension='both', plot=True)
+        sid  = m.group(0)
+        mat  = np.loadtxt(os.path.join(directory, fname), delimiter=',')
+        dist = prepocess(mat, mapping)
 
-    subject_ids.append(sid)
-    features.append(vec)
+        vec = compute_persistence_images(
+            distance_matrix=dist,
+            h_dimension='both',
+            max_death=1.0,
+            display_plot=False,
+            save_plot=True,
+            subject_id=sid,
+            output_dir=output_directory
+        )
 
+        subject_ids.append(sid)
+        features.append(vec)
+
+    # save all features in one CSV
+
+    # Create DataFrame: one row per subject, columns f0, f1, f2, …
+    df = pd.DataFrame(features)
+    df.insert(0, 'subject_id', subject_ids)
+
+    out_csv = os.path.join(output_directory, 'PI_features.csv')
+    df.to_csv(out_csv, index=False)
+    print(f"Saved combined features to {out_csv}")
+
+
+
+
+ 
