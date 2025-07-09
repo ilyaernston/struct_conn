@@ -201,6 +201,20 @@ def compute_persistence_images(
     diag_h0 = result['dgms'][0]
     diag_h1 = result['dgms'][1]
 
+    '''plot intermidiate PDs
+    plt.figure(figsize=(12,6))
+    plt.subplot(121)
+
+    Rips().plot(diag_h0, show=False)
+    plt.title("PD of $H_0$")
+
+    plt.subplot(122)
+    Rips().plot(diag_h1, show=False)
+    plt.title("PD of $H_1$")
+
+    plt.show()
+    '''
+
     # 2) clamp infinite deaths
     for diag in (diag_h0, diag_h1):
         infs = np.isinf(diag[:, 1])
@@ -254,11 +268,11 @@ def compute_persistence_images(
 # Main function
 
 if __name__ == '__main__':
-    directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder'
-    #directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum'
+    #directory = '/Users/elijah/Desktop/thesis/Connectomes/test_folder'
+    directory = '/Users/elijah/Desktop/thesis/Connectomes/rec-SDStream_atlas-fan2016_desc-SIFT2_scale-None_meas-sum'
     mapping = pd.read_csv('/Users/elijah/Desktop/thesis/Connectomes/mapping.csv')
 
-    output_directory = '/Users/elijah/Desktop/thesis/test_PI'
+    output_directory = '/Users/elijah/Desktop/thesis/test_PI_1_allsub'
 
     subject_ids = []
     features    = []
