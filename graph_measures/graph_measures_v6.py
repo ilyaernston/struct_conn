@@ -34,7 +34,6 @@ def create_reversed_matrix(adj_matrix):
     rev_matrix[rev_matrix == ref_value] = 0
     return rev_matrix
 
-
 def compute_small_world_indices(matrix):
     # Create an igraph graph from the adjacency matrix
     g = ig.Graph.Adjacency((matrix > 0).tolist())
@@ -45,17 +44,34 @@ def compute_small_world_indices(matrix):
     # Calculate clustering coefficient
     clustering_coeff = g.transitivity_undirected()
 
-    # Calculate random graph for comparison
-    n = g.vcount()
-    m = g.ecount()
-    p = 2 * m / (n * (n - 1))  # Probability for Erdős-Rényi graph
-    rand_graph = ig.Graph.Erdos_Renyi(n=n, p=p)
-    rand_avg_path_length = rand_graph.average_path_length()
-    rand_clustering_coeff = rand_graph.transitivity_undirected()
+    # Calculate random and lattice graphs for comparison (averaged over N samples)
+    N = 10  # Number of graphs to generate
+    n = g.vcount() # Number of vertices
+    m = g.ecount() # Number of edges
+    k = int(round(2*m / n)) # Mean degree
+    nei = k // 2 # Neighbors on each side
+    p = 2 * m / (n * (n - 1)) # Probability for Erdős-Rényi graph
+
+    rand_avg_path_lengths = []
+    rand_clustering_coeffs = []
+    lattice_clustering_coeffs = []
+
+    for _ in range(N):
+        rand_graph = ig.Graph.Erdos_Renyi(n=n, p=p) # Generate a random graph
+        rand_graph = rand_graph.simplify()  # Remove self-loops and parallel edges
+        lattice_graph = ig.Graph.Watts_Strogatz(1, n, nei, p=0) # Generate a lattice graph
+
+        rand_avg_path_lengths.append(rand_graph.average_path_length()) # Calculate average path length for random graph
+        rand_clustering_coeffs.append(rand_graph.transitivity_undirected()) # Calculate clustering coefficient for random graph
+        lattice_clustering_coeffs.append(lattice_graph.transitivity_undirected()) # Calculate clustering coefficient for lattice graph
+
+    rand_avg_path_length = np.mean(rand_avg_path_lengths)
+    rand_clustering_coeff = np.mean(rand_clustering_coeffs)
+    lattice_clustering_coeff = np.mean(lattice_clustering_coeffs)
 
     # Calculate small-world indices
     sigma = (clustering_coeff / rand_clustering_coeff) / (avg_path_length / rand_avg_path_length)
-    omega = (rand_avg_path_length / avg_path_length) - (clustering_coeff / rand_clustering_coeff)
+    omega = (rand_avg_path_length / avg_path_length) - (clustering_coeff / lattice_clustering_coeff)
 
     return sigma, omega, avg_path_length, clustering_coeff
 
