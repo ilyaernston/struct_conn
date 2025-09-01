@@ -18,8 +18,6 @@ from sklearn.manifold import MDS
 from sklearn.manifold import TSNE
 from sklearn.cluster import KMeans
 import seaborn as sns
-import os
-import re
 import networkx as nx
 import time
 import pandas as pd
@@ -29,10 +27,11 @@ from sklearn.mixture import GaussianMixture
 from scipy.spatial.distance import squareform
 import argparse
 from typing import Tuple, List, Dict, Optional, Union
-
-# Import helper functions from separate modules
-from .preprocessing import drop_cerebellum, connect_components, normalize_matrix
-from .persistence_diagrams import compute_persistence, plot_persistence_diagram
+import sys
+import os
+# Import helper functions from submodules
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from preprocessing import drop_cerebellum, connect_components, normalize_matrix
 
 # Set modern scientific style
 sns.set_style("whitegrid")

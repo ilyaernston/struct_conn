@@ -8,9 +8,6 @@ This script performs persistence analysis on expert vs naive developer connectiv
 using Betti curves to characterize topological features across H0, H1, and H2 homology groups.
 """
 
-# Import helper functions from separate modules
-from .preprocessing import drop_cerebellum, connect_components, normalize_matrix
-
 import numpy as np
 import pandas as pd
 
@@ -21,9 +18,13 @@ import gudhi as gd
 import networkx as nx
 
 import argparse
-import os
 import time
 from typing import Tuple, List, Dict
+import sys
+import os
+# Import helper functions from submodules
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from preprocessing import drop_cerebellum, connect_components, normalize_matrix
 
 # Set modern scientific style
 sns.set_style("whitegrid")
@@ -212,7 +213,7 @@ def analyze_group_persistence(matrices: np.ndarray, names: np.ndarray,
                     betti_curves[dim][i, :] = betti_curve
                     
         except Exception as e:
-            print(f"  Warning: Failed to process subject {name}: {str(e)}")
+            print(f"  Warning: Failed to process subject {names[i]}: {str(e)}")
             # Fill with zeros for failed subjects
             for dim in homology_dims:
                 betti_curves[dim][i, :] = np.zeros(n_filtration_points)

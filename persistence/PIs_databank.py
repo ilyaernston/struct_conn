@@ -4,7 +4,6 @@ Script for topological data analysis of structural connectivity via Persistance 
 
 # Import dependencies
 
-import os
 import re
 import time
 import random
@@ -25,8 +24,11 @@ from persim import PersImage
 from persim import PersistenceImager
 from persim import plot_diagrams
 
-# Import helper functions from separate modules
-from .preprocessing import drop_cerebellum, connect_components, normalize_matrix
+import sys
+import os
+# Import helper functions from submodules
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from preprocessing import drop_cerebellum, connect_components, normalize_matrix
 
 def prepocess(matrix, mapping):
     
