@@ -151,8 +151,8 @@ def main():
                          'HearingAid', 'LongCovid', 'HolocaustLineage', 'SufferingReporting', 'Education', 
                          'Native Language Family', 'Number of Languages']
     meta_df = remove_uniques(meta_df)
-    for col in meta_df.columns:
-        print(meta_df[col].value_counts())
+    #for col in meta_df.columns:
+    #    print(meta_df[col].value_counts())
 
     # Show available metadata columns
     print("\nAvailable metadata columns:")

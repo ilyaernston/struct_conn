@@ -25,121 +25,7 @@ from persim import PersImage
 from persim import PersistenceImager
 from persim import plot_diagrams
 
-# Hepler functions (preprocessing)
-
-def drop_cerebellum(matrix, mapping):
-    
-    to_drop = mapping.loc[mapping['Lobe'] == 'Cerebellum', 'index'].values
-     
-    # build a boolean mask of size N
-    mask = np.ones(matrix.shape[0], dtype=bool)
-    mask[to_drop] = False
-     
-    # filter the matrix: keep only rows & cols where mask==True
-    filtered_matrix = matrix[np.ix_(mask, mask)]  
-    
-    return filtered_matrix
-
-def connect_components(graph, mapping):
-    '''
-    Checks if graph has multiple connected components.
-    If so, connects smaller components to the anatomacallly closest node in the largest component .
-    Anatomical data is obtained from the mapping file. File should be stored in the script's directory and called 'mapping.csv'
-     
-    
-    Parameters
-    ----------
-    graph : nx.Graph
-        networkx graph to process
-    mapping : str
-        path to mapping file in .csv
-        
-    Returns
-    ----------    
-    connected_graph : nx.Graph
-        processed graph
-    conn_nodes : list
-        list of dicts with pairs of nodes, between which edges were constructed
-    
-    '''
-    
-    conn_nodes_list = []
-    
-    # check for unconnected components
-    comps = list(nx.connected_components(graph)) # list connected components
-    n_components = nx.number_connected_components(graph)
-    
-    if n_components > 1:
-        main_comp = max(comps, key=len)
-        main_nodes = set(main_comp)
-    
-        for comp in comps:
-            if comp is main_comp:
-                continue
-            else:
-                # pick a random node in the smaller component and define it'd position
-                u = random.choice(list(comp))
-                attr_u = mapping.loc[u]
-                hemi_u  = attr_u['Hemi']
-                gyrus_u = attr_u['Gyrus']
-                lobe_u  = attr_u['Lobe']
-        
-                # restrict main‐component nodes to same hemisphere
-                main_attrs = mapping.loc[list(main_nodes)]
-                same_hemi = main_attrs[main_attrs['Hemi'] == hemi_u]
-        
-                # try to connect within same gyrus
-                candidates = same_hemi[same_hemi['Gyrus'] == gyrus_u].index.tolist()
-                # if no nodes in same gyrus, try same lobe
-                if not candidates:
-                    candidates = same_hemi[same_hemi['Lobe'] == lobe_u].index.tolist()
-                # if no nodes in the same lobe, connect to any same‐hemi node
-                if not candidates:
-                    candidates = same_hemi.index.tolist()
-                # last option: connect to any main node
-                if not candidates:
-                    candidates = list(main_nodes)
-        
-                v = random.choice(candidates)
-        
-                # compute average edge weight among candidate region in the main comp
-                matrix = nx.to_numpy_array(graph)
-                sub_idx = candidates
-                submat  = matrix[np.ix_(sub_idx, sub_idx)]
-                weights = submat[submat > 0]
-                avg_w   = float(weights.mean()) if weights.size else float(matrix.mean())
-        
-                # add the edge
-                graph.add_edge(u, v, weight=avg_w)
-                
-                '''
-                # print data on added edge
-                attr_v = mapping_df.loc[v]
-                gyrus_v = attr_v['Gyrus']
-                lobe_v = attr_v['Lobe']
-                if gyrus_u == gyrus_v:
-                    print(f'Added the edge of weight {avg_w} between nodes {u} from and {v} in {gyrus_u} of {hemi_u} hemisphere')
-                elif lobe_u == lobe_v:
-                    print(f'Added the edge of weight {avg_w} between nodes {u} from and {v} in {lobe_u} of {hemi_u} hemisphere')
-                else:
-                    print('Added a shitty edge between nodes {u} from and {v}')
-                '''
-                
-                conn_nodes_list.append({u:v})
-        
-        # rebuild graph with addaed connections
-        connected_graph = graph
-    else:
-        conn_nodes_list.append(np.nan)
-        connected_graph = graph
-        
-    return connected_graph, conn_nodes_list
-
-def normalize_matrix(matrix):
-    """Normalize MRI matrix to [0, 1] range"""
-    min_val = np.min(matrix)
-    max_val = np.max(matrix)
-    return (matrix - min_val) / (max_val - min_val)
+from .preprocessing import drop_cerebellum, connect_components, normalize_matrix
 
 def prepocess(matrix, mapping):
     
@@ -313,5 +199,71 @@ if __name__ == '__main__':
 
 
 
+### COMMAND LINE INTERFACE ###
 
+def main():
+    """Main function - can be run interactively or via command line"""
+    parser = argparse.ArgumentParser(description='Developer Connectomes Persistence Analysis')
+    parser.add_argument('--non-interactive', action='store_true', 
+                        help='Run with default parameters (both developer groups, MDS, save only)')
+    parser.add_argument('--output-dir', type=str, 
+                        default='/Users/elijah/Desktop/thesis/struct_conn_developer_output',
+                        help='Output directory')
+    parser.add_argument('--max-subjects', type=int, default=None,
+                        help='Maximum subjects per group')
+    
+    args = parser.parse_args()
+    
+    if args.non_interactive:
+        # Run with default parameters
+        print("Running in non-interactive mode with default parameters...")
+        
+        # Setup paths
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        data_dir = os.path.join(os.path.dirname(script_dir), 'dev_connectomes')
+        mapping_path = os.path.join(os.path.dirname(script_dir), 'graph_measures', 'mapping.csv')
+        
+        # Create output directory
+        os.makedirs(args.output_dir, exist_ok=True)
+        
+        # Load data
+        mapping = pd.read_csv(mapping_path)
+        expert_mats = np.load(os.path.join(data_dir, 'expert_mats.npy'))
+        expert_names = np.load(os.path.join(data_dir, 'expert_names.npy'), allow_pickle=True)
+        naive_mats = np.load(os.path.join(data_dir, 'naive_mats.npy'))
+        naive_names = np.load(os.path.join(data_dir, 'naive_names.npy'), allow_pickle=True)
+        
+        # Process both developer groups
+        results = {}
+        for group_name, matrices, names in [('expert', expert_mats, expert_names), 
+                                           ('naive', naive_mats, naive_names)]:
+            PDs_H0, PDs_H1, subject_ids, dropped = process_group_data(
+                matrices, names, group_name, mapping, args.output_dir
+            )
+            
+            if len(PDs_H0) > 0:
+                distance_matrix = compute_pds_distances(
+                    PDs_H0, PDs_H1, subject_ids, group_name, args.output_dir
+                )
+                labels_df, meta_df = cluster_and_visualize_distances(
+                    distance_matrix, group_name, 'MDS', 'save', args.output_dir
+                )
+                results[group_name] = {
+                    'distance_matrix': distance_matrix,
+                    'labels': labels_df,
+                    'meta': meta_df,
+                    'subject_ids': subject_ids,
+                    'dropped_subjects': dropped
+                }
+        
+        print(f"Analysis complete. Results saved to {args.output_dir}")
+        
+    else:
+        # Run interactive mode
+        results = run_analysis_with_ui()
+    
+    return results
+
+if __name__ == "__main__":
+    main()
  
