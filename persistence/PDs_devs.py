@@ -10,7 +10,7 @@ with an interactive command-line interface for parameter selection.
 
 import numpy as np
 import matplotlib.pyplot as plt
-import gudhi as gd
+import gudhi
 import persim
 from scipy.sparse.csgraph import connected_components
 from scipy.sparse import csr_matrix
@@ -32,6 +32,7 @@ import os
 # Import helper functions from submodules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from preprocessing import drop_cerebellum, connect_components, normalize_matrix
+from persistence_diagrams import compute_persistence, plot_persistence_diagram
 
 # Set modern scientific style
 sns.set_style("whitegrid")
@@ -53,9 +54,18 @@ def compute_pds_distances(
     PDs_H1: List[np.ndarray],
     subject_ids: List[str],
     group_name: str,
-    output_dir: Optional[str] = None
+    output_dir: Optional[str] = None,
+    dist_metric: str = 'wasserstein'
 ) -> pd.DataFrame:
-    """Compute pairwise Wasserstein distances between persistence diagrams"""
+    """Compute pairwise distances between persistence diagrams
+    Args:
+        PDs_H0       : list of H0 persistence diagrams (np.ndarray)
+        PDs_H1       : list of H1 persistence diagrams (np.ndarray)
+        subject_ids  : list of subject IDs corresponding to PDs
+        group_name   : name of the group being analyzed
+        output_dir   : directory to save intermediate distance matrices
+        dist_metric  : distance metric to use ('wasserstein', 'bottleneck' or 'heat')
+    """
     save_dir = output_dir or os.path.dirname(os.path.abspath(__file__))
     os.makedirs(save_dir, exist_ok=True)
     
@@ -64,20 +74,52 @@ def compute_pds_distances(
     print(f'Computing distances for {group_name} group ({num_graphs} subjects)')
     distance_matrix = np.zeros((num_graphs, num_graphs))
     
-    for i in range(num_graphs):
-        print(f'Processing subject {i+1} of {num_graphs}')
-        for j in range(i, num_graphs):
-            d0 = persim.sliced_wasserstein(PDs_H0[i], PDs_H0[j])
-            d1 = persim.sliced_wasserstein(PDs_H1[i], PDs_H1[j])
-            distance_matrix[i, j] = distance_matrix[j, i] = d0 + d1
-            
-        if (i + 1) % 50 == 0 or (i + 1) == num_graphs:
-            dist_df = pd.DataFrame(distance_matrix, index=subject_ids, columns=subject_ids)
-            fname = f'distance_matrix_{group_name}_{i+1}_subjects.csv'
-            csv_path = os.path.join(save_dir, fname)
-            dist_df.to_csv(csv_path)
-            print(f'→ saved distance matrix to {csv_path}')
-    
+    if dist_metric == 'wasserstein':
+        print('Using sliced Wasserstein distance metric')
+        for i in range(num_graphs):
+            print(f'Processing subject {i+1} of {num_graphs}')
+            for j in range(i, num_graphs):
+                d0 = gudhi.wasserstein.wasserstein_distance(PDs_H0[i], PDs_H0[j])
+                d1 = gudhi.wasserstein.wasserstein_distance(PDs_H1[i], PDs_H1[j])
+                distance_matrix[i, j] = distance_matrix[j, i] = d0 + d1
+                
+            if (i + 1) % 50 == 0 or (i + 1) == num_graphs:
+                dist_df = pd.DataFrame(distance_matrix, index=subject_ids, columns=subject_ids)
+                fname = f'distance_matrix_{group_name}_{i+1}_subjects.csv'
+                csv_path = os.path.join(save_dir, fname)
+                dist_df.to_csv(csv_path)
+                print(f'Saved Wasserstein distance matrix to {csv_path}')
+    elif dist_metric == 'bottleneck':
+        print('Using bottleneck distance metric')
+        for i in range(num_graphs):
+            print(f'Processing subject {i+1} of {num_graphs}')
+            for j in range(i, num_graphs):
+                d0 = gudhi.bottleneck_distance(PDs_H0[i], PDs_H0[j])
+                d1 = gudhi.bottleneck_distance(PDs_H1[i], PDs_H1[j])
+                distance_matrix[i, j] = distance_matrix[j, i] = d0 + d1
+                
+            if (i + 1) % 50 == 0 or (i + 1) == num_graphs:
+                dist_df = pd.DataFrame(distance_matrix, index=subject_ids, columns=subject_ids)
+                fname = f'distance_matrix_{group_name}_{i+1}_subjects.csv'
+                csv_path = os.path.join(save_dir, fname)
+                dist_df.to_csv(csv_path)
+                print(f'Saved Bottleneck distance matrix to {csv_path}')
+    elif dist_metric == 'heat':
+        print('Using heat kernel distance metric')
+        for i in range(num_graphs):
+            print(f'Processing subject {i+1} of {num_graphs}')
+            for j in range(i, num_graphs):
+                d0 = persim.heat(PDs_H0[i], PDs_H0[j])
+                d1 = persim.heat(PDs_H1[i], PDs_H1[j])
+                distance_matrix[i, j] = distance_matrix[j, i] = d0 + d1
+                
+            if (i + 1) % 50 == 0 or (i + 1) == num_graphs:
+                dist_df = pd.DataFrame(distance_matrix, index=subject_ids, columns=subject_ids)
+                fname = f'distance_matrix_{group_name}_{i+1}_subjects.csv'
+                csv_path = os.path.join(save_dir, fname)
+                dist_df.to_csv(csv_path)
+                print(f'Saved Heat Kernel distance matrix to {csv_path}')
+
     dist_df = pd.DataFrame(distance_matrix, index=subject_ids, columns=subject_ids)
     return dist_df
 
@@ -121,6 +163,7 @@ def create_metadata_plots(emb, subject_ids, metadata_df, metadata_type, group_na
         ax.set_title(f"{method_str} {group_name} embedding colored by {col} ({metadata_type})")
         ax.set_xlabel('Dim 1'); ax.set_ylabel('Dim 2'); ax.grid(alpha=0.3)
         ax.legend(title=col, bbox_to_anchor=(1, 1))
+        ax.set_aspect('equal', adjustable='box')
         
         if plot_mode in ('save', 'both'):
             filename_parts = [embedding_method.lower(), group_name, 'by', col, metadata_type]
@@ -265,28 +308,37 @@ def cluster_and_visualize_distances(
                 'perplexity': perp
             }])
 
-            # Plot clustering
-            fig, ax = plt.subplots(figsize=(7, 6))
-            sc = ax.scatter(
-                emb[:, 0], emb[:, 1],
-                c=labels, cmap='tab10', s=60,
-                edgecolor='k', alpha=0.8
-            )
-            if isinstance(best_bic, str):
-                ax.set_title(f"t-SNE {group_name} (pp={perp}) + GMM (k={best_k})\n{quality_text}")
+            # Plot clustering with special handling for both groups
+            if group_name == 'both_groups' and group_metadata_df is not None:
+                # Special combined plot with group=color, cluster=shape
+                plot_combined_embedding_with_groups_and_clusters(
+                    emb, labels_df, f"t-SNE (pp={perp})", quality_text, best_k, best_bic, 
+                    plot_mode, save_dir, perp
+                )
             else:
-                ax.set_title(f"t-SNE {group_name} (pp={perp}) + GMM (k={best_k})\n{quality_text}\nBIC={best_bic:.3f}")
-            ax.set_xlabel('Dim 1'); ax.set_ylabel('Dim 2'); ax.grid(alpha=0.3)
-            handles, _ = sc.legend_elements()
-            ax.legend(handles, [str(i) for i in range(best_k)], title='cluster')
-            
-            if plot_mode in ('save', 'both'):
-                fn = os.path.join(save_dir, f"tsne_{group_name}_pp{perp}_k{best_k}_clusters.png")
-                fig.savefig(fn, dpi=300, bbox_inches='tight')
-                print(f"Saved clustering plot → {fn}")
-            if plot_mode in ('show', 'both'): 
-                plt.show()
-            plt.close(fig)
+                # Standard clustering plot
+                fig, ax = plt.subplots(figsize=(7, 6))
+                sc = ax.scatter(
+                    emb[:, 0], emb[:, 1],
+                    c=labels, cmap='tab10', s=60,
+                    edgecolor='k', alpha=0.8
+                )
+                if isinstance(best_bic, str):
+                    ax.set_title(f"t-SNE {group_name} (pp={perp}) + GMM (k={best_k})\n{quality_text}")
+                else:
+                    ax.set_title(f"t-SNE {group_name} (pp={perp}) + GMM (k={best_k})\n{quality_text}\nBIC={best_bic:.3f}")
+                ax.set_xlabel('Dim 1'); ax.set_ylabel('Dim 2'); ax.grid(alpha=0.3)
+                handles, _ = sc.legend_elements()
+                ax.legend(handles, [str(i) for i in range(best_k)], title='cluster')
+                ax.set_aspect('equal', adjustable='box')
+                
+                if plot_mode in ('save', 'both'):
+                    fn = os.path.join(save_dir, f"tsne_{group_name}_pp{perp}_k{best_k}_clusters.png")
+                    fig.savefig(fn, dpi=300, bbox_inches='tight')
+                    print(f"Saved clustering plot → {fn}")
+                if plot_mode in ('show', 'both'): 
+                    plt.show()
+                plt.close(fig)
 
             # Create metadata-colored plots based on color scheme
             if color_scheme in [1, 3] and group_meta is not None:
@@ -372,28 +424,37 @@ def cluster_and_visualize_distances(
             'stress': stress
         }])
 
-        # Plot clustering
-        fig, ax = plt.subplots(figsize=(7, 6))
-        sc = ax.scatter(
-            emb[:, 0], emb[:, 1],
-            c=labels, cmap='tab10', s=60,
-            edgecolor='k', alpha=0.8
-        )
-        if isinstance(best_bic, str):
-            ax.set_title(f"MDS {group_name} + GMM (k={best_k})\n{quality_text}")
+        # Plot clustering with special handling for both groups
+        if group_name == 'both_groups' and group_metadata_df is not None:
+            # Special combined plot with group=color, cluster=shape
+            plot_combined_embedding_with_groups_and_clusters(
+                emb, labels_df, "MDS", quality_text, best_k, best_bic, 
+                plot_mode, save_dir, None
+            )
         else:
-            ax.set_title(f"MDS {group_name} + GMM (k={best_k})\n{quality_text}\nBIC={best_bic:.3f}")
-        ax.set_xlabel('Dim 1'); ax.set_ylabel('Dim 2'); ax.grid(alpha=0.3)
-        handles, _ = sc.legend_elements()
-        ax.legend(handles, [str(i) for i in range(best_k)], title='cluster')
-        
-        if plot_mode in ('save', 'both'):
-            fn = os.path.join(save_dir, f"mds_{group_name}_k{best_k}_clusters.png")
-            fig.savefig(fn, dpi=300, bbox_inches='tight')
-            print(f"Saved clustering plot → {fn}")
-        if plot_mode in ('show', 'both'): 
-            plt.show()
-        plt.close(fig)
+            # Standard clustering plot
+            fig, ax = plt.subplots(figsize=(7, 6))
+            sc = ax.scatter(
+                emb[:, 0], emb[:, 1],
+                c=labels, cmap='tab10', s=60,
+                edgecolor='k', alpha=0.8
+            )
+            if isinstance(best_bic, str):
+                ax.set_title(f"MDS {group_name} + GMM (k={best_k})\n{quality_text}")
+            else:
+                ax.set_title(f"MDS {group_name} + GMM (k={best_k})\n{quality_text}\nBIC={best_bic:.3f}")
+            ax.set_xlabel('Dim 1'); ax.set_ylabel('Dim 2'); ax.grid(alpha=0.3)
+            handles, _ = sc.legend_elements()
+            ax.legend(handles, [str(i) for i in range(best_k)], title='cluster')
+            ax.set_aspect('equal', adjustable='box')
+            
+            if plot_mode in ('save', 'both'):
+                fn = os.path.join(save_dir, f"mds_{group_name}_k{best_k}_clusters.png")
+                fig.savefig(fn, dpi=300, bbox_inches='tight')
+                print(f"Saved clustering plot → {fn}")
+            if plot_mode in ('show', 'both'): 
+                plt.show()
+            plt.close(fig)
 
         # Create metadata-colored plots based on color scheme
         if color_scheme in [1, 3] and group_meta is not None:
@@ -534,325 +595,450 @@ def create_metadata_df(expert_names: np.ndarray, naive_names: np.ndarray) -> pd.
     
     return pd.DataFrame(metadata_rows)
 
-### INTERACTIVE UI FUNCTIONS ###
+def plot_combined_persistence_diagrams(
+    expert_PDs_H0: List[np.ndarray], 
+    expert_PDs_H1: List[np.ndarray],
+    naive_PDs_H0: List[np.ndarray], 
+    naive_PDs_H1: List[np.ndarray],
+    plot_mode: str = 'save',
+    save_dir: str = '.'
+):
+    """Plot combined persistence diagrams for both expert and naive groups with color coding"""
+    
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(14, 6))
+    
+    # Track whether labels have been added
+    expert_h0_labeled = False
+    naive_h0_labeled = False
+    expert_h1_labeled = False
+    naive_h1_labeled = False
+    
+    # Plot H0 diagrams
+    for pd_h0 in expert_PDs_H0:
+        if len(pd_h0) > 0:
+            label = 'Expert' if not expert_h0_labeled else None
+            ax0.scatter(pd_h0[:, 0], pd_h0[:, 1], c='tab:blue', alpha=0.5, s=10, label=label)
+            expert_h0_labeled = True
+    
+    for pd_h0 in naive_PDs_H0:
+        if len(pd_h0) > 0:
+            label = 'Naive' if not naive_h0_labeled else None
+            ax0.scatter(pd_h0[:, 0], pd_h0[:, 1], c='tab:orange', alpha=0.5, s=10, label=label)
+            naive_h0_labeled = True
+    
+    # Plot H1 diagrams
+    for pd_h1 in expert_PDs_H1:
+        if len(pd_h1) > 0:
+            label = 'Expert' if not expert_h1_labeled else None
+            ax1.scatter(pd_h1[:, 0], pd_h1[:, 1], c='tab:blue', alpha=0.5, s=10, label=label)
+            expert_h1_labeled = True
+    
+    for pd_h1 in naive_PDs_H1:
+        if len(pd_h1) > 0:
+            label = 'Naive' if not naive_h1_labeled else None
+            ax1.scatter(pd_h1[:, 0], pd_h1[:, 1], c='tab:orange', alpha=0.5, s=10, label=label)
+            naive_h1_labeled = True
+    
+    # Add diagonal lines and set axis properties
+    max_val = 1.0
+    min_val = -0.1
+    for ax in [ax0, ax1]:
+        ax.plot([min_val, max_val], [min_val, max_val], 'k--', alpha=0.5, linewidth=1)
+        ax.set_xlim(min_val, max_val)
+        ax.set_ylim(min_val, max_val)
+        ax.set_xlabel('Birth')
+        ax.set_ylabel('Death')
+        ax.grid(True, alpha=0.3)
+        ax.legend()
+        ax.set_aspect('equal', adjustable='box')
+    
+    ax0.set_title('H0 Persistence Diagrams (Expert vs Naive)')
+    ax1.set_title('H1 Persistence Diagrams (Expert vs Naive)')
+    
+    plt.tight_layout()
+    
+    if plot_mode in ('save', 'both'):
+        filename = os.path.join(save_dir, 'combined_persistence_diagrams_both_groups.png')
+        plt.savefig(filename, dpi=300, bbox_inches='tight')
+        print(f"→ Saved combined persistence diagram to {filename}")
+    
+    if plot_mode in ('show', 'both'):
+        plt.show()
+    
+    plt.close(fig)
 
-def get_user_parameters():
-    """Interactive parameter selection"""
-    print("\n" + "="*60)
-    print("  DEVELOPER CONNECTOMES PERSISTENCE ANALYSIS")
-    print("="*60)
+def plot_combined_embedding_with_groups_and_clusters(
+    emb: np.ndarray,
+    labels_df: pd.DataFrame,
+    method_name: str,
+    quality_text: str,
+    n_clusters: int,
+    bic_score: Union[float, str],
+    plot_mode: str,
+    save_dir: str,
+    perp: Optional[int] = None
+):
+    """Plot embedding with group=color and cluster=shape for combined analysis"""
     
-    # Group selection
-    print("\nGroup Selection:")
-    print("1. Expert developers only")
-    print("2. Naive developers only") 
-    print("3. Comparative analysis (expert vs naive developers)")
+    # Define marker styles for clusters
+    cluster_markers = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h', 'H', '+', 'x', 'X', '|', '_']
     
-    while True:
-        try:
-            group_choice = int(input("\nSelect analysis type (1-3): "))
-            if group_choice in [1, 2, 3]:
-                break
-            else:
-                print("Please enter 1, 2, or 3")
-        except ValueError:
-            print("Please enter a valid number")
+    # Define colors for groups
+    group_colors = {'expert': 'tab:blue', 'naive': 'tab:orange'}
     
-    # Sample size limitation
-    print("\nSample Size:")
-    print("Large datasets can take significant time to process.")
-    limit_samples = input("Limit number of subjects per group? (y/n): ").lower().startswith('y')
-    max_subjects = None
+    fig, ax = plt.subplots(figsize=(10, 10))
     
-    if limit_samples:
-        while True:
-            try:
-                max_subjects = int(input("Maximum subjects per group: "))
-                if max_subjects > 0:
-                    break
-                else:
-                    print("Please enter a positive number")
-            except ValueError:
-                print("Please enter a valid number")
-    
-    # Embedding method
-    print("\nEmbedding Method:")
-    print("1. MDS (faster, deterministic)")
-    print("2. t-SNE (slower, can reveal different patterns)")
-    print("3. Both")
-    
-    while True:
-        try:
-            embed_choice = int(input("\nSelect embedding method (1-3): "))
-            if embed_choice in [1, 2, 3]:
-                break
-            else:
-                print("Please enter 1, 2, or 3")
-        except ValueError:
-            print("Please enter a valid number")
-    
-    # Output visualization
-    print("\nVisualization:")
-    print("1. Save plots only")
-    print("2. Show plots interactively")
-    print("3. Both save and show")
-    
-    while True:
-        try:
-            plot_choice = int(input("\nSelect visualization option (1-3): "))
-            if plot_choice in [1, 2, 3]:
-                break
-            else:
-                print("Please enter 1, 2, or 3")
-        except ValueError:
-            print("Please enter a valid number")
-    
-    # Manual cluster number
-    print("\nClustering:")
-    manual_k = input("Specify number of clusters manually? (y/n): ").lower().startswith('y')
-    k_number = None
-    
-    if manual_k:
-        while True:
-            try:
-                k_number = int(input("Number of clusters (k): "))
-                if k_number > 1:
-                    break
-                else:
-                    print("Please enter a number greater than 1")
-            except ValueError:
-                print("Please enter a valid number")
-    
-    # Export parameters
-    print("\nData Export:")
-    export_params = input("Export embedding coordinates and cluster labels? (y/n): ").lower().startswith('y')
-    
-    # Color-coding options (only for combined analysis)
-    color_scheme = None
-    external_metadata_path = None
-    if group_choice == 3:
-        print("\nColor-coding Options for Combined Analysis:")
-        print("1. Group-based coloring (expert vs naive developers)")
-        print("2. External metadata coloring (requires metadata file)")
-        print("3. Both group and metadata coloring")
+    # Plot each group-cluster combination
+    for group in labels_df['group'].unique():
+        group_mask = labels_df['group'] == group
+        group_data = labels_df[group_mask]
         
-        while True:
-            try:
-                color_choice = int(input("\nSelect color-coding scheme (1-3): "))
-                if color_choice in [1, 2, 3]:
-                    color_scheme = color_choice
-                    break
-                else:
-                    print("Please enter 1, 2, or 3")
-            except ValueError:
-                print("Please enter a valid number")
-        
-        # If external metadata is needed, get the file path
-        if color_scheme in [2, 3]:
-            external_metadata_path = input("Enter path to external metadata CSV file: ").strip()
-            if not external_metadata_path or not os.path.exists(external_metadata_path):
-                print(f"Warning: Metadata file not found. Will use group-based coloring only.")
-                external_metadata_path = None
-                if color_scheme == 2:
-                    color_scheme = 1  # Fall back to group coloring
-                elif color_scheme == 3:
-                    color_scheme = 1  # Fall back to group coloring only
+        for cluster in sorted(group_data['cluster'].unique()):
+            cluster_mask = group_data['cluster'] == cluster
+            cluster_data = group_data[cluster_mask]
+            
+            if len(cluster_data) > 0:
+                marker = cluster_markers[cluster % len(cluster_markers)]
+                color = group_colors.get(group, 'tab:gray')
+                
+                # Get corresponding embedding coordinates
+                indices = cluster_data.index
+                ax.scatter(
+                    emb[indices, 0], emb[indices, 1],
+                    c=color, marker=marker, s=80, alpha=0.7,
+                    edgecolor='black', linewidth=0.5,
+                    label=f'{group.title()} Cluster {cluster}'
+                )
     
-    # Output directory
-    default_output = "/Users/elijah/Desktop/thesis/struct_conn_developer_output"
-    output_dir = input(f"\nOutput directory (press Enter for default: {default_output}): ").strip()
-    if not output_dir:
-        output_dir = default_output
+    # Set title based on method
+    title_parts = [method_name, "Both Groups + GMM", f"(k={n_clusters})"]
+    if perp is not None:
+        title_parts.insert(1, f"(pp={perp})")
     
-    return {
-        'group_choice': group_choice,
-        'max_subjects': max_subjects,
-        'embed_choice': embed_choice,
-        'plot_choice': plot_choice,
-        'k_number': k_number,
-        'export_params': export_params,
-        'color_scheme': color_scheme,
-        'external_metadata_path': external_metadata_path,
-        'output_dir': output_dir
-    }
+    title = " ".join(title_parts) + f"\n{quality_text}"
+    if not isinstance(bic_score, str):
+        title += f"\nBIC={bic_score:.3f}"
+    
+    ax.set_title(title)
+    ax.set_xlabel('Dim 1')
+    ax.set_ylabel('Dim 2')
+    ax.grid(True, alpha=0.3)
+    ax.set_aspect('equal', adjustable='box')
+    
+    # Create legend with two parts: groups and clusters
+    import matplotlib.lines as mlines
+    
+    # Group legend elements
+    expert_line = mlines.Line2D([], [], color='tab:blue', marker='o', linestyle='None',
+                               markersize=8, label='Expert')
+    naive_line = mlines.Line2D([], [], color='tab:orange', marker='o', linestyle='None',
+                              markersize=8, label='Naive')
+    
+    # Cluster legend elements  
+    cluster_lines = []
+    for i in range(n_clusters):
+        marker = cluster_markers[i % len(cluster_markers)]
+        cluster_lines.append(
+            mlines.Line2D([], [], color='tab:gray', marker=marker, linestyle='None',
+                         markersize=8, label=f'Cluster {i}')
+        )
+    
+    # Create two legends
+    legend1 = ax.legend(handles=[expert_line, naive_line], 
+                       title='Groups', loc='upper left', bbox_to_anchor=(1.02, 1))
+    legend2 = ax.legend(handles=cluster_lines,
+                       title='Clusters', loc='upper left', bbox_to_anchor=(1.02, 0.7))
+    
+    # Add both legends
+    ax.add_artist(legend1)
+    ax.add_artist(legend2)
+    ax.set_aspect('equal', adjustable='box')
+    
+    plt.tight_layout()
+    
+    if plot_mode in ('save', 'both'):
+        method_lower = method_name.lower().replace(' ', '_').replace('(', '').replace(')', '')
+        if perp is not None:
+            fn = os.path.join(save_dir, f"{method_lower}_pp{perp}_both_groups_k{n_clusters}_combined.png")
+        else:
+            fn = os.path.join(save_dir, f"{method_lower}_both_groups_k{n_clusters}_combined.png")
+        fig.savefig(fn, dpi=300, bbox_inches='tight')
+        print(f"Saved combined embedding plot → {fn}")
+    
+    if plot_mode in ('show', 'both'):
+        plt.show()
+    
+    plt.close(fig)
 
-def run_analysis_with_ui():
-    """Main analysis function with interactive UI"""
+### COMMAND LINE INTERFACE ###
+
+def main():
+    """Main function to parse arguments and run analysis"""
+
+    # Determine default data directory relative to script location
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    default_data_dir = os.path.join(os.path.dirname(script_dir), 'data', 'dev_connectomes')
+    default_output_dir = os.path.join(os.path.dirname(script_dir), 'output', 'dev_connectomes_analysis')
+    default_mapping_file = os.path.join(os.path.dirname(script_dir), 'data', 'mapping.csv')
+
+    parser = argparse.ArgumentParser(description='Developer Connectomes Persistence Analysis')
     
-    # Get user parameters
-    params = get_user_parameters()
+    # Analysis type
+    parser.add_argument('--group', type=str, required=True,
+                        choices=['expert', 'naive', 'both'],
+                        help='Group to analyze: expert, naive, or both')
+    parser.add_argument('--max-subjects', type=int, default=None,
+                        help='Maximum subjects per group')
+    
+    # Data parameters
+    parser.add_argument('--data-dir', type=str, 
+                        default=default_data_dir,
+                        help='Directory containing connectivity data: expert_mats.npy, naive_mats.npy, expert_names.npy, naive_names.npy')
+    parser.add_argument('--output-dir', type=str, 
+                        default=default_output_dir,
+                        help='Output directory')
+    parser.add_argument('--mapping-file', type=str, 
+                        default=default_mapping_file,
+                        help='Path to mapping CSV file (if not specified, uses default)')
+    
+    # Analysis parameters
+    parser.add_argument('--distance-metric', type=str, default='bottleneck',
+                        choices=['bottleneck', 'wasserstein', 'heat'],
+                        help='Metric to use for inter-PDs distance matrix')
+    parser.add_argument('--embedding', type=str, default='mds',
+                        choices=['mds', 'tsne', 'both'],
+                        help='Embedding method: mds, tsne, or both')
+    parser.add_argument('--k-clusters', type=int, default=None,
+                        help='Number of clusters (if not specified, will be determined automatically)')
+    
+    # Output parameters
+    parser.add_argument('--plot-mode', type=str, default='save',
+                        choices=['save', 'show', 'both'],
+                        help='How to handle plots: save, show, or both')
+    parser.add_argument('--export-params', action='store_true',
+                        help='Export embedding coordinates and cluster labels to CSV')
+    
+    args = parser.parse_args()
+    
+    print(f"Running Developer Connectomes Persistence Analysis")
+    print(f"Group: {args.group}")
+    print(f"Distance metric: {args.distance_metric}")
+    print(f"Embedding: {args.embedding}")
+    print(f"Output directory: {args.output_dir}")
     
     # Setup paths
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    data_dir = os.path.join(os.path.dirname(script_dir), 'dev_connectomes')
-    mapping_path = os.path.join(os.path.dirname(script_dir), 'graph_measures', 'mapping.csv')
-    
-    # Create output directory
-    os.makedirs(params['output_dir'], exist_ok=True)
-    
-    # Load mapping
-    mapping = pd.read_csv(mapping_path)
+    data_dir = args.data_dir
+    output_dir = args.output_dir
+    mapping_path = args.mapping_file
+
+    # Insure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
     
     # Load data
-    print(f"\nLoading developer connectome data from {data_dir}...")
+    print(f"\nLoading data from {data_dir}...")
+    mapping = pd.read_csv(mapping_path)
     expert_mats = np.load(os.path.join(data_dir, 'expert_mats.npy'))
     expert_names = np.load(os.path.join(data_dir, 'expert_names.npy'), allow_pickle=True)
     naive_mats = np.load(os.path.join(data_dir, 'naive_mats.npy'))
     naive_names = np.load(os.path.join(data_dir, 'naive_names.npy'), allow_pickle=True)
     
-    print(f"Loaded expert developers: {len(expert_mats)} subjects")
-    print(f"Loaded naive developers: {len(naive_mats)} subjects")
+    print(f"Loaded {len(expert_mats)} expert and {len(naive_mats)} naive developers")
     
-    # Process groups based on selection with proper sampling
-    groups_to_process = []
-    external_metadata = None
-    
-    # Apply sampling early if requested
-    if params['max_subjects']:
-        if len(expert_mats) > params['max_subjects']:
-            expert_indices = np.random.choice(len(expert_mats), params['max_subjects'], replace=False)
+    # Apply sampling if requested
+    if args.max_subjects:
+        if len(expert_mats) > args.max_subjects:
+            expert_indices = np.random.choice(len(expert_mats), args.max_subjects, replace=False)
             expert_mats = expert_mats[expert_indices]
             expert_names = expert_names[expert_indices]
-            print(f"Sampled {params['max_subjects']} expert developers from {len(expert_indices)} total")
+            print(f"Sampled {args.max_subjects} expert developers")
             
-        if len(naive_mats) > params['max_subjects']:
-            naive_indices = np.random.choice(len(naive_mats), params['max_subjects'], replace=False)
+        if len(naive_mats) > args.max_subjects:
+            naive_indices = np.random.choice(len(naive_mats), args.max_subjects, replace=False)
             naive_mats = naive_mats[naive_indices]
             naive_names = naive_names[naive_indices]
-            print(f"Sampled {params['max_subjects']} naive developers from {len(naive_indices)} total")
+            print(f"Sampled {args.max_subjects} naive developers")
     
-    if params['group_choice'] == 1:  # Expert developers only
-        groups_to_process.append(('expert', expert_mats, expert_names))
-    elif params['group_choice'] == 2:  # Naive developers only
-        groups_to_process.append(('naive', naive_mats, naive_names))
-    elif params['group_choice'] == 3:  # Combined analysis
-        # Now combine the already-sampled matrices and names
-        combined_mats = np.concatenate([expert_mats, naive_mats], axis=0)
-        combined_names = np.concatenate([expert_names, naive_names], axis=0)
-        groups_to_process.append(('combined', combined_mats, combined_names))
-        print(f"Combined analysis will use {len(expert_mats)} expert + {len(naive_mats)} naive = {len(combined_mats)} total subjects")
-        
-        # Load external metadata if provided
-        if params['external_metadata_path']:
-            try:
-                external_metadata = pd.read_csv(params['external_metadata_path'])
-                print(f"Loaded external metadata for {len(external_metadata)} subjects")
-                # Ensure subject_id column exists
-                if 'subject_id' not in external_metadata.columns:
-                    print("Warning: External metadata must contain 'subject_id' column. Ignoring external metadata.")
-                    external_metadata = None
-            except Exception as e:
-                print(f"Error loading external metadata: {e}. Using group-based coloring only.")
-                external_metadata = None
+    # Determine embedding methods
+    if args.embedding == 'mds':
+        methods = ['MDS']
+    elif args.embedding == 'tsne':
+        methods = ['TSNE'] 
+    elif args.embedding == 'both':
+        methods = ['MDS', 'TSNE']
+    else:
+        methods = ['MDS']  # Default fallback
     
-    # Analysis results storage
+    # Process groups based on selection
     results = {}
     
-    # Plot mode mapping
-    plot_modes = {1: 'save', 2: 'show', 3: 'both'}
-    plot_mode = plot_modes[params['plot_choice']]
-    
-    # Embedding method mapping
-    embed_methods = {1: ['MDS'], 2: ['TSNE'], 3: ['MDS', 'TSNE']}
-    methods = embed_methods[params['embed_choice']]
-    
-    # Process each group
-    for group_name, matrices, names in groups_to_process:
+    if args.group == 'both':
+        # Combined processing for both groups
         print(f"\n{'='*60}")
-        print(f"PROCESSING {group_name.upper()} GROUP")
+        print("PROCESSING BOTH GROUPS TOGETHER")
         print(f"{'='*60}")
         
-        # Process connectivity data
-        PDs_H0, PDs_H1, subject_ids, dropped = process_group_data(
-            matrices, names, group_name, mapping, 
-            params['output_dir']
+        # Process expert group
+        print("\nProcessing expert group...")
+        expert_PDs_H0, expert_PDs_H1, expert_subject_ids, expert_dropped = process_group_data(
+            expert_mats, expert_names, 'expert', mapping, args.output_dir
         )
         
-        if len(PDs_H0) == 0:
-            print(f"No valid subjects found for {group_name} group!")
-            continue
-        
-        # Plot sample persistence diagram
-        print(f'\nPlotting sample persistence diagram for {group_name}')
-        plot_persistence_diagram(
-            PDs_H0[0], PDs_H1[0], 
-            title=f"{group_name.title()} Group Sample PD",
-            plot_mode=plot_mode,
-            save_dir=params['output_dir']
+        # Process naive group
+        print("\nProcessing naive group...")
+        naive_PDs_H0, naive_PDs_H1, naive_subject_ids, naive_dropped = process_group_data(
+            naive_mats, naive_names, 'naive', mapping, args.output_dir
         )
         
-        # Compute distance matrix
-        print(f'\nComputing distance matrix for {group_name}')
-        distance_matrix = compute_pds_distances(
-            PDs_H0, PDs_H1, subject_ids, group_name, params['output_dir']
+        if len(expert_PDs_H0) == 0 or len(naive_PDs_H0) == 0:
+            print("Error: Need valid subjects from both groups!")
+            return {}
+        
+        # Combine all persistence diagrams
+        all_PDs_H0 = expert_PDs_H0 + naive_PDs_H0
+        all_PDs_H1 = expert_PDs_H1 + naive_PDs_H1
+        all_subject_ids = expert_subject_ids + naive_subject_ids
+        all_groups = ['expert'] * len(expert_subject_ids) + ['naive'] * len(naive_subject_ids)
+        
+        # Save combined PDs
+        combined_fname = os.path.join(args.output_dir, f'PDs_both_groups_combined.pkl')
+        with open(combined_fname, 'wb') as f:
+            pickle.dump({
+                'PDs_H0': all_PDs_H0,
+                'PDs_H1': all_PDs_H1,
+                'subject_ids': all_subject_ids,
+                'groups': all_groups,
+                'expert_dropped': expert_dropped,
+                'naive_dropped': naive_dropped
+            }, f)
+        print(f'→ Saved combined PDs to {combined_fname}')
+        
+        # Plot combined persistence diagrams
+        print('\nPlotting combined persistence diagrams...')
+        plot_combined_persistence_diagrams(
+            expert_PDs_H0, expert_PDs_H1, naive_PDs_H0, naive_PDs_H1,
+            plot_mode=args.plot_mode, save_dir=args.output_dir
         )
+        
+        # Compute combined distance matrix
+        print('\nComputing combined distance matrix...')
+        combined_distance_matrix = compute_pds_distances(
+            PDs_H0=all_PDs_H0, 
+            PDs_H1=all_PDs_H1, 
+            subject_ids=all_subject_ids, 
+            group_name='both_groups', 
+            output_dir=args.output_dir,
+            dist_metric=args.distance_metric
+        )
+        
+        # Create metadata DataFrame for group information
+        group_metadata_df = pd.DataFrame({
+            'subject_id': all_subject_ids,
+            'group': all_groups
+        })
         
         # Clustering and visualization for each embedding method
         for method in methods:
-            print(f'\nClustering and visualization using {method} for {group_name}')
-            
-            # Prepare metadata for color coding based on group
-            group_metadata_df = None
-            external_metadata_df = None
-            
-            if group_name == 'expert':
-                # Create metadata for the actual processed expert subjects
-                expert_subject_names = np.array(subject_ids)  # Use the sampled subject IDs
-                group_metadata_df = create_metadata_df(expert_subject_names, np.array([]))
-            elif group_name == 'naive':
-                # Create metadata for the actual processed naive subjects  
-                naive_subject_names = np.array(subject_ids)  # Use the sampled subject IDs
-                group_metadata_df = create_metadata_df(np.array([]), naive_subject_names)
-            elif group_name == 'combined':
-                # Create metadata for the actual processed combined subjects
-                # Determine which subjects are expert vs naive based on the original naming
-                combined_expert_names = []
-                combined_naive_names = []
-                
-                for subj_id in subject_ids:
-                    # Check if this subject was originally from expert or naive group
-                    if subj_id in [str(name) for name in expert_names]:
-                        combined_expert_names.append(subj_id)
-                    elif subj_id in [str(name) for name in naive_names]:
-                        combined_naive_names.append(subj_id)
-                
-                group_metadata_df = create_metadata_df(
-                    np.array(combined_expert_names), 
-                    np.array(combined_naive_names)
-                )
-                print(f"Created developer group metadata for {len(group_metadata_df)} processed subjects")
-                
-                if params['external_metadata_path'] and 'external_metadata' in locals():
-                    external_metadata_df = external_metadata
+            print(f'\nClustering and visualization using {method} for combined groups')
             
             labels_df, meta_df = cluster_and_visualize_distances(
-                distance_matrix, 
-                group_name, 
+                combined_distance_matrix, 
+                'both_groups', 
                 method, 
-                plot_mode, 
-                params['output_dir'],
+                args.plot_mode, 
+                args.output_dir,
                 group_metadata_df=group_metadata_df,
-                external_metadata_df=external_metadata_df,
-                color_scheme=params['color_scheme'],
-                k_number=params['k_number'],
-                export_params=params['export_params']
+                external_metadata_df=None,
+                color_scheme=1,  # Use group-based coloring
+                k_number=args.k_clusters,
+                export_params=args.export_params
             )
             
-            results[f'{group_name}_{method}'] = {
-                'distance_matrix': distance_matrix,
+            results[f'both_groups_{method}'] = {
+                'distance_matrix': combined_distance_matrix,
                 'labels': labels_df,
                 'meta': meta_df,
-                'PDs_H0': PDs_H0,
-                'PDs_H1': PDs_H1,
-                'subject_ids': subject_ids,
-                'dropped_subjects': dropped
+                'PDs_H0': all_PDs_H0,
+                'PDs_H1': all_PDs_H1,
+                'subject_ids': all_subject_ids,
+                'groups': all_groups,
+                'expert_dropped': expert_dropped,
+                'naive_dropped': naive_dropped
             }
     
+    else:
+        # Single group processing
+        groups_to_process = []
+        if args.group == 'expert':
+            groups_to_process.append(('expert', expert_mats, expert_names))
+        elif args.group == 'naive':
+            groups_to_process.append(('naive', naive_mats, naive_names))
+        
+        for group_name, matrices, names in groups_to_process:
+            print(f"\n{'='*60}")
+            print(f"PROCESSING {group_name.upper()} GROUP")
+            print(f"{'='*60}")
+            
+            # Process connectivity data
+            PDs_H0, PDs_H1, subject_ids, dropped = process_group_data(
+                matrices, names, group_name, mapping, args.output_dir
+            )
+            
+            if len(PDs_H0) == 0:
+                print(f"No valid subjects found for {group_name} group!")
+                continue
+            
+            # Plot sample persistence diagram
+            print(f'\nPlotting sample persistence diagram for {group_name}')
+            plot_persistence_diagram(
+                PDs_H0[0], PDs_H1[0], 
+                title=f"{group_name.title()} Group Sample PD",
+                plot_mode=args.plot_mode,
+                save_dir=args.output_dir
+            )
+            
+            # Compute distance matrix
+            print(f'\nComputing distance matrix for {group_name}')
+            distance_matrix = compute_pds_distances(
+                PDs_H0=PDs_H0, 
+                PDs_H1=PDs_H1, 
+                subject_ids=subject_ids, 
+                group_name=group_name, 
+                output_dir=args.output_dir,
+                dist_metric=args.distance_metric
+            )
+            
+            # Clustering and visualization for each embedding method
+            for method in methods: # type: ignore
+                print(f'\nClustering and visualization using {method} for {group_name}')
+                
+                labels_df, meta_df = cluster_and_visualize_distances(
+                    distance_matrix, 
+                    group_name, 
+                    method, 
+                    args.plot_mode, 
+                    args.output_dir,
+                    group_metadata_df=None,
+                    external_metadata_df=None,
+                    color_scheme=None,
+                    k_number=args.k_clusters,
+                    export_params=args.export_params
+                )
+                
+                results[f'{group_name}_{method}'] = {
+                    'distance_matrix': distance_matrix,
+                    'labels': labels_df,
+                    'meta': meta_df,
+                    'PDs_H0': PDs_H0,
+                    'PDs_H1': PDs_H1,
+                    'subject_ids': subject_ids,
+                    'dropped_subjects': dropped
+                }
+    
     # Save combined results
-    combined_results_path = os.path.join(params['output_dir'], 'combined_analysis_results.pkl')
+    combined_results_path = os.path.join(args.output_dir, 'analysis_results.pkl')
     with open(combined_results_path, 'wb') as f:
         pickle.dump(results, f)
-    print(f"\n→ Saved combined results to {combined_results_path}")
+    print(f"\n→ Saved results to {combined_results_path}")
     
     # Generate summary
     print(f"\n{'='*60}")
@@ -863,75 +1049,18 @@ def run_analysis_with_ui():
         group_name = key.split('_')[0]
         method = '_'.join(key.split('_')[1:])
         n_subjects = len(result['subject_ids'])
-        n_dropped = len(result['dropped_subjects'])
+        
+        # Handle different key names for dropped subjects
+        if 'dropped_subjects' in result:
+            n_dropped = len(result['dropped_subjects'])
+        elif 'expert_dropped' in result and 'naive_dropped' in result:
+            n_dropped = len(result['expert_dropped']) + len(result['naive_dropped'])
+        else:
+            n_dropped = 0
+            
         print(f"{group_name.title()} group ({method}): {n_subjects} subjects analyzed, {n_dropped} dropped")
     
-    print(f"\nAll outputs saved to: {params['output_dir']}")
-    
-    return results
-
-### COMMAND LINE INTERFACE ###
-
-def main():
-    """Main function - can be run interactively or via command line"""
-    parser = argparse.ArgumentParser(description='Developer Connectomes Persistence Analysis')
-    parser.add_argument('--non-interactive', action='store_true', 
-                        help='Run with default parameters (both developer groups, MDS, save only)')
-    parser.add_argument('--output-dir', type=str, 
-                        default='/Users/elijah/Desktop/thesis/struct_conn_developer_output',
-                        help='Output directory')
-    parser.add_argument('--max-subjects', type=int, default=None,
-                        help='Maximum subjects per group')
-    
-    args = parser.parse_args()
-    
-    if args.non_interactive:
-        # Run with default parameters
-        print("Running in non-interactive mode with default parameters...")
-        
-        # Setup paths
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        data_dir = os.path.join(os.path.dirname(script_dir), 'dev_connectomes')
-        mapping_path = os.path.join(os.path.dirname(script_dir), 'graph_measures', 'mapping.csv')
-        
-        # Create output directory
-        os.makedirs(args.output_dir, exist_ok=True)
-        
-        # Load data
-        mapping = pd.read_csv(mapping_path)
-        expert_mats = np.load(os.path.join(data_dir, 'expert_mats.npy'))
-        expert_names = np.load(os.path.join(data_dir, 'expert_names.npy'), allow_pickle=True)
-        naive_mats = np.load(os.path.join(data_dir, 'naive_mats.npy'))
-        naive_names = np.load(os.path.join(data_dir, 'naive_names.npy'), allow_pickle=True)
-        
-        # Process both developer groups
-        results = {}
-        for group_name, matrices, names in [('expert', expert_mats, expert_names), 
-                                           ('naive', naive_mats, naive_names)]:
-            PDs_H0, PDs_H1, subject_ids, dropped = process_group_data(
-                matrices, names, group_name, mapping, args.output_dir
-            )
-            
-            if len(PDs_H0) > 0:
-                distance_matrix = compute_pds_distances(
-                    PDs_H0, PDs_H1, subject_ids, group_name, args.output_dir
-                )
-                labels_df, meta_df = cluster_and_visualize_distances(
-                    distance_matrix, group_name, 'MDS', 'save', args.output_dir
-                )
-                results[group_name] = {
-                    'distance_matrix': distance_matrix,
-                    'labels': labels_df,
-                    'meta': meta_df,
-                    'subject_ids': subject_ids,
-                    'dropped_subjects': dropped
-                }
-        
-        print(f"Analysis complete. Results saved to {args.output_dir}")
-        
-    else:
-        # Run interactive mode
-        results = run_analysis_with_ui()
+    print(f"\nAll outputs saved to: {args.output_dir}")
     
     return results
 

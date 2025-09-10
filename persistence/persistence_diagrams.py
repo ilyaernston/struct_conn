@@ -48,22 +48,23 @@ def plot_persistence_diagram(
         ax.scatter(
             H0[:, 0], H0[:, 1],
             c='#1f77b4', marker='^', s=80,
-            label='H0', alpha=0.7, edgecolor='w'
+            label='H0', alpha=0.7, edgecolors='w'
         )
     if len(H1) > 0:
         ax.scatter(
             H1[:, 0], H1[:, 1],
             c='#ff7f0e', marker='o', s=80,
-            label='H1', alpha=0.7, edgecolor='w'
+            label='H1', alpha=0.7, edgecolors='w'
         )
 
     all_deaths = []
     if len(H0) > 0: all_deaths.extend(H0[:, 1])
     if len(H1) > 0: all_deaths.extend(H1[:, 1])
-    max_val = max([1.0] + all_deaths)
+    max_val = max([1.0] + all_deaths) if all_deaths else 1.0
     ax.plot([0, max_val], [0, max_val], '--', color='#2ca02c', alpha=0.7)
 
     ax.set(xlabel='Birth', ylabel='Death', title=title)
+    ax.set_aspect('equal', adjustable='box')
     ax.legend()
     plt.tight_layout()
 
