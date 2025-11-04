@@ -5,6 +5,7 @@ networkx==3.4.2
 numpy==2.2.5
 pandas==2.2.3
 persim==0.3.8
+pyflagser>=0.4.0
 python_igraph==0.11.8
 python_louvain==0.16
 scikit_learn==1.6.1
