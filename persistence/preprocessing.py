@@ -72,3 +72,9 @@ def normalize_matrix(matrix: np.ndarray) -> np.ndarray:
     min_val = np.min(matrix)
     max_val = np.max(matrix)
     return (matrix - min_val) / (max_val - min_val)
+
+def invert_weights(matrix: np.ndarray) -> np.ndarray:
+    """Convert weights to distances"""
+    safe_weights = np.where(matrix > 0, matrix, np.inf)
+    inv_matrix = np.where(safe_weights != np.inf, 1 / safe_weights, 0)
+    return inv_matrix
