@@ -115,10 +115,8 @@ def compute_betti_curve(persistence_intervals: np.ndarray, filtration_values: np
     return betti_numbers
 
 def preprocess_connectome(matrix: np.ndarray, mapping_df: pd.DataFrame, 
-                         drop_cereb: bool = True, 
-                         connect: bool = True,
-                         normalize: bool = True,
-                         to_distance: bool = True) -> np.ndarray:
+                         drop_cerebellum_flag: bool = True, 
+                         connect_components_flag: bool = True) -> np.ndarray:
     """
     Preprocess connectivity matrix for persistence analysis.
     
@@ -128,52 +126,42 @@ def preprocess_connectome(matrix: np.ndarray, mapping_df: pd.DataFrame,
         Connectivity matrix
     mapping_df : pd.DataFrame
         Region mapping information
-    drop_cereb : bool
+    drop_cerebellum_flag : bool
         Whether to remove cerebellum regions
-    connect : bool
+    connect_components_flag : bool
         Whether to connect disconnected components
-    normalize : bool
-        Whether to normalize the matrix
-    to_distance : bool
-        Whether to convert the matrix to a distance matrix
     
     Returns:
     --------
     np.ndarray : Preprocessed distance matrix
     """
     # Remove cerebellum if requested
-    if drop_cereb:
+    if drop_cerebellum_flag:
         matrix = drop_cerebellum(matrix, mapping_df)
     
-    # Connect components
-    if connect:
+    # Convert to distance matrix (1 - normalized weights)
+    normalized_matrix = normalize_matrix(matrix)
+    distance_matrix = 1.0 - normalized_matrix
+    
+    # Ensure diagonal is zero
+    np.fill_diagonal(distance_matrix, 0.0)
+    
+    # Connect components if requested
+    if connect_components_flag:
         # Convert to graph and reconnect components
-        graph = nx.from_numpy_array(1.0 - matrix)
+        graph = nx.from_numpy_array(1.0 - distance_matrix)
         connected_graph, _ = connect_components(graph, mapping_df)
         adj_matrix = nx.to_numpy_array(connected_graph)
-        matrix = 1.0 - adj_matrix
+        distance_matrix = 1.0 - adj_matrix
+        np.fill_diagonal(distance_matrix, 0.0)
     
-    # Convert to distance matrix 
-    if to_distance:
-        safe_weights = np.where(matrix > 0, matrix, np.inf)
-        matrix = np.where(safe_weights != np.inf, 1 / safe_weights, 0)
-
-    # Normalize the matrix
-    if normalize:
-        matrix = normalize_matrix(matrix)
-
-    # Ensure diagonal is zero
-    np.fill_diagonal(matrix, 0.0)
-    
-    return matrix
+    return distance_matrix
 
 def analyze_group_persistence(matrices: np.ndarray, names: np.ndarray, 
                             mapping_df: pd.DataFrame, 
                             homology_dims: List[int] = [0, 1, 2],
                             max_edge_length: float = 1.0,
-                            n_filtration_points: int = 100,
-                            preprocess_matrices: bool = True,
-                            drop_cerebellum_flag: bool = True) -> Dict:
+                            n_filtration_points: int = 100) -> Dict:
     """
     Analyze persistence for a group of subjects.
     
@@ -181,7 +169,6 @@ def analyze_group_persistence(matrices: np.ndarray, names: np.ndarray,
     -----------
     matrices : np.ndarray
         3D array of connectivity matrices (n_subjects, n_regions, n_regions)
-        If preprocess_matrices=False, matrices should already be distance matrices
     names : np.ndarray
         Subject names
     mapping_df : pd.DataFrame
@@ -192,10 +179,6 @@ def analyze_group_persistence(matrices: np.ndarray, names: np.ndarray,
         Maximum edge length for Rips complex
     n_filtration_points : int
         Number of filtration parameter values
-    preprocess_matrices : bool
-        Whether to preprocess matrices (default: True)
-    drop_cerebellum_flag : bool
-        Whether to remove cerebellum regions from analysis (only used if preprocess_matrices=True)
     
     Returns:
     --------
@@ -216,15 +199,8 @@ def analyze_group_persistence(matrices: np.ndarray, names: np.ndarray,
             print(f"  Processed subject {i-1}/{n_subjects}")
         
         try:
-            if preprocess_matrices:
-                # Preprocess connectivity matrix
-                distance_matrix = preprocess_connectome(
-                    matrix=matrix, 
-                    mapping_df=mapping_df, 
-                    drop_cereb=drop_cerebellum_flag)
-            else:
-                # Matrices are already preprocessed distance matrices
-                distance_matrix = matrix
+            # Preprocess connectivity matrix
+            distance_matrix = preprocess_connectome(matrix, mapping_df)
             
             # Compute persistence diagrams
             # For safety and correctness, we always compute up to max(homology_dims) + 1, with minimum of 2
@@ -260,17 +236,16 @@ def analyze_group_persistence(matrices: np.ndarray, names: np.ndarray,
     
     return results
 
-def generate_random_networks(reference_matrices: List[np.ndarray], 
+def generate_random_networks(reference_matrix: np.ndarray, 
                            n_random_networks: int = 20,
                            preserve_degree_sequence: bool = True) -> List[np.ndarray]:
     """
-    Generate random networks with similar properties to the reference matrices.
+    Generate random networks with similar properties to the reference matrix.
     
     Parameters:
     -----------
-    reference_matrices : List[np.ndarray]
-        List of reference connectivity matrices to average properties from.
-        A single matrix can be provided as a list with one element.
+    reference_matrix : np.ndarray
+        Reference connectivity matrix to match properties
     n_random_networks : int
         Number of random networks to generate
     preserve_degree_sequence : bool
@@ -280,94 +255,48 @@ def generate_random_networks(reference_matrices: List[np.ndarray],
     --------
     List[np.ndarray] : List of random connectivity matrices
     """
-
-    # Calculate average properties of reference matrices
-    n_nodes_list = []
-    n_edges_list = []
-    degree_sequence_list = []
-    all_nonzero_weights = []
-
-    for matrix in reference_matrices:
-        # Convert to binary for topology analysis
-        binary_matrix = (matrix > 0).astype(int)
-        np.fill_diagonal(binary_matrix, 0)
-
-        # Create networkx graph
-        G = nx.from_numpy_array(binary_matrix)
-
-        # Calculate number of nodes and edges
-        n_nodes = G.number_of_nodes()
-        n_edges = G.number_of_edges()
-        n_nodes_list.append(n_nodes)
-        n_edges_list.append(n_edges)
-
-        # Calculate degree sequence
-        degree_sequence = [G.degree(n) for n in G.nodes()]
-        degree_sequence_list.append(degree_sequence)
-        
-        # Collect non-zero weights for later sampling
-        nonzero_weights = matrix[matrix > 0]
-        all_nonzero_weights.extend(nonzero_weights)
-
-    # Calculate average properties
-    avg_n_nodes = int(np.mean(n_nodes_list))
-    avg_n_edges = int(np.mean(n_edges_list))
+    # Convert to binary for topology analysis
+    binary_matrix = (reference_matrix > 0).astype(int)
+    np.fill_diagonal(binary_matrix, 0)
     
-    # Handle degree sequence averaging for single vs multiple matrices
-    if len(reference_matrices) == 1:
-        # For single matrix, use the degree sequence directly
-        avg_degree_sequence = np.array(degree_sequence_list[0], dtype=int)
-    else:
-        # For multiple matrices, average the degree sequences
-        degree_sequence_array = np.array(degree_sequence_list)
-        avg_degree_sequence = np.round(np.mean(degree_sequence_array, axis=0)).astype(int)
-    
-    # Ensure degree sequence sums to even number (required for configuration model)
-    if preserve_degree_sequence and sum(avg_degree_sequence) % 2 != 0:
-        # Add 1 to the node with highest degree to make sum even
-        max_idx = np.argmax(avg_degree_sequence)
-        avg_degree_sequence[max_idx] += 1
+    # Create networkx graph
+    G = nx.from_numpy_array(binary_matrix)
+    n_nodes = G.number_of_nodes()
+    n_edges = G.number_of_edges()
     
     random_matrices = []
     
-    print(f"Average network properties from {len(reference_matrices)} reference matrix(es):")
-    print(f"  Nodes: {avg_n_nodes}, Edges: {avg_n_edges}")
-    if preserve_degree_sequence:
-        print(f"  Average degree: {np.mean(avg_degree_sequence):.2f}")
-
-    print(f"Generating {n_random_networks} random networks with {avg_n_nodes} nodes and {avg_n_edges} edges...")
+    print(f"Generating {n_random_networks} random networks with {n_nodes} nodes and {n_edges} edges...")
+    
     for i in tqdm(range(n_random_networks)):
         if preserve_degree_sequence:
             # Generate random graph with same degree sequence
             try:
                 # Use configuration model to preserve degree sequence
-                random_G = nx.configuration_model(avg_degree_sequence)
+                degree_sequence = [G.degree(n) for n in G.nodes()]
+                random_G = nx.configuration_model(degree_sequence)
                 # Remove self-loops and parallel edges
                 random_G = nx.Graph(random_G)
                 random_G.remove_edges_from(nx.selfloop_edges(random_G))
-            except Exception as e:
+            except:
                 # Fallback to Erdős-Rényi if configuration model fails
-                print(f"Warning: Configuration model failed ({e}), using Erdős-Rényi")
-                p = 2 * avg_n_edges / (avg_n_nodes * (avg_n_nodes - 1)) if avg_n_nodes > 1 else 0
-                random_G = nx.erdos_renyi_graph(avg_n_nodes, p)
+                p = 2 * n_edges / (n_nodes * (n_nodes - 1))
+                random_G = nx.erdos_renyi_graph(n_nodes, p)
         else:
             # Simple Erdős-Rényi random graph
-            p = 2 * avg_n_edges / (avg_n_nodes * (avg_n_nodes - 1)) if avg_n_nodes > 1 else 0
-            random_G = nx.erdos_renyi_graph(avg_n_nodes, p)
+            p = 2 * n_edges / (n_nodes * (n_nodes - 1))
+            random_G = nx.erdos_renyi_graph(n_nodes, p)
         
         # Convert back to adjacency matrix
         random_adj = nx.to_numpy_array(random_G)
         
-        # Assign random weights from the original matrices' weight distribution
-        if len(all_nonzero_weights) > 0:
-            # Sample weights from the combined weight distribution
-            n_edges_in_random = np.sum(random_adj > 0)
-            if n_edges_in_random > 0:
-                random_weights = np.random.choice(all_nonzero_weights, size=n_edges_in_random)
-                random_weighted = random_adj.copy()
-                random_weighted[random_adj > 0] = random_weights
-            else:
-                random_weighted = random_adj
+        # Assign random weights from the original matrix's weight distribution
+        nonzero_weights = reference_matrix[reference_matrix > 0]
+        if len(nonzero_weights) > 0:
+            # Sample weights from the original distribution
+            random_weights = np.random.choice(nonzero_weights, size=np.sum(random_adj > 0))
+            random_weighted = random_adj.copy()
+            random_weighted[random_adj > 0] = random_weights
         else:
             random_weighted = random_adj
             
@@ -386,9 +315,9 @@ def analyze_random_networks(matrices: List[np.ndarray],
     Parameters:
     -----------
     matrices : List[np.ndarray]
-        List of random connectivity matrices (already preprocessed)
+        List of random connectivity matrices
     mapping_df : pd.DataFrame
-        Region mapping information (kept for compatibility)
+        Region mapping information
     homology_dims : List[int]
         Homology dimensions to compute
     max_edge_length : float
@@ -415,11 +344,8 @@ def analyze_random_networks(matrices: List[np.ndarray],
             print(f"  Processed random network {i}/{n_networks}")
         
         try:
-            # Convert connectivity matrix to distance matrix for persistence analysis
-            # Since matrices are already preprocessed, just convert to distance format
-            normalized_matrix = normalize_matrix(matrix)
-            distance_matrix = 1.0 - normalized_matrix
-            np.fill_diagonal(distance_matrix, 0.0)
+            # Preprocess connectivity matrix
+            distance_matrix = preprocess_connectome(matrix, mapping_df)
             
             # Compute persistence diagrams
             max_dim = max(max(homology_dims) + 1, 2)
@@ -611,13 +537,7 @@ def main():
         default=os.path.join(default_output_dir, "betti_analysis_output"),
         help="Output directory for plots and results (default: ./output/dev_connectomes_betti)"
     )
-    parser.add_argument(
-        "--keep_cerebellum",
-        action="store_true",
-        default=False,
-        help="Keep cerebellum regions in analysis (default: cerebellum is dropped)"
-    )
-
+    
     # Analysis parameters
     parser.add_argument(
         "--homology_dims", 
@@ -643,27 +563,27 @@ def main():
     )
     
     parser.add_argument(
-        "--no_plot_display", 
+        "--no_show_plots", 
         action="store_true",
         help="Do not display plots (only save to files)"
     )
     
     # Random network comparison parameters
     parser.add_argument(
-        "--compare_to_random", 
+        "--include_random", 
         action="store_true",
         help="Generate random networks for comparison baseline"
     )
     
     parser.add_argument(
-        "--n_random_nets", 
+        "--n_random_networks", 
         type=int, 
         default=20,
         help="Number of random networks to generate (default: 20)"
     )
     
     parser.add_argument(
-        "--use_config_model", 
+        "--preserve_degree_sequence", 
         action="store_true",
         help="Preserve degree sequence in random networks (default: False, uses Erdős-Rényi)"
     )
@@ -675,8 +595,8 @@ def main():
     print(f"Naive data: {args.naive_mats}")
     print(f"Homology dimensions: {args.homology_dims}")
     print(f"Output directory: {args.output_dir}")
-    if args.compare_to_random:
-        print(f"Random networks: {args.n_random_nets} networks, preserve degree: {args.use_config_model}")
+    if args.include_random:
+        print(f"Random networks: {args.n_random_networks} networks, preserve degree: {args.preserve_degree_sequence}")
     print()
     
     # Create output directory
@@ -717,106 +637,41 @@ def main():
     print(f"Loading region mapping from: {args.mapping}")
     mapping_df = pd.read_csv(args.mapping)
     print(f"Loaded mapping for {len(mapping_df)} regions")
-    print('='*50)
-    print()
-    
-    # Preprocess expert group matrices
-    print("Preprocessing expert group matrices...")
-    expert_distance_mats = []
-    for i, matrix in enumerate(expert_mats):
-        distance_matrix = preprocess_connectome(matrix=matrix, 
-                                                mapping_df=mapping_df,
-                                                drop_cereb=not args.keep_cerebellum)
-        expert_distance_mats.append(distance_matrix)
-    
-    # Convert to numpy array
-    expert_distance_mats = np.array(expert_distance_mats)
-        
-    n = np.random.randint(0, len(expert_distance_mats)-1)
-    
-    G = nx.from_numpy_array(expert_distance_mats[n])
-    print(f'Properties of expert connectome {n} after preprocessing:')
-    print('Number of nodes:', G.number_of_nodes())
-    print('Number of edges:', G.number_of_edges())
-    print('Density:', nx.density(G))
-    print('Number of connected components:', nx.number_connected_components(G))
-    print()
-
-    # Preprocess naive group matrices  
-    print("Preprocessing naive group matrices...")
-    naive_distance_mats = []
-    for i, matrix in enumerate(naive_mats):
-        distance_matrix = preprocess_connectome(matrix=matrix, 
-                                                mapping_df=mapping_df,
-                                                drop_cereb=not args.keep_cerebellum)
-        naive_distance_mats.append(distance_matrix)
-    
-    # Convert to numpy array
-    naive_distance_mats = np.array(naive_distance_mats)
-
-    n = np.random.randint(0, len(naive_distance_mats)-1)
-    G = nx.from_numpy_array(naive_distance_mats[n])
-    print(f'Properties of naive connectome {n} after preprocessing:')
-    print('Number of nodes:', G.number_of_nodes())
-    print('Number of edges:', G.number_of_edges())
-    print('Density:', nx.density(G))
-    print('Number of connected components:', nx.number_connected_components(G))
-    print('='*50)
     print()
     
     # Analyze expert group
     print("Analyzing expert group...")
     expert_results = analyze_group_persistence(
-        expert_distance_mats, expert_names, mapping_df,
+        expert_mats, expert_names, mapping_df,
         homology_dims=args.homology_dims,
         max_edge_length=args.max_edge_length,
-        n_filtration_points=args.n_filtration_points,
-        preprocess_matrices=False
+        n_filtration_points=args.n_filtration_points
     )
-    print()
     
     # Analyze naive group
     print("Analyzing naive group...")
     naive_results = analyze_group_persistence(
-        naive_distance_mats, naive_names, mapping_df,
+        naive_mats, naive_names, mapping_df,
         homology_dims=args.homology_dims,
         max_edge_length=args.max_edge_length,
-        n_filtration_points=args.n_filtration_points,
-        preprocess_matrices=False
+        n_filtration_points=args.n_filtration_points
     )
-    print()
     
     # Generate and analyze random networks if requested
     random_results = None
-    if args.compare_to_random:
+    if args.include_random:
         print("\nGenerating random networks for comparison...")
-        # Use the combined preprocessed distance matrices to get representative network properties
-        all_distance_mats = np.concatenate([expert_distance_mats, naive_distance_mats], axis=0)
-        # Convert distance matrices back to connectivity matrices for random generation
-        print("Converting distance matrices to connectivity format for random generation...")
-        preprocessed_matrices = []
-        for i, distance_matrix in enumerate(all_distance_mats):
-            # Convert back to connectivity matrix (1 - distance)
-            connectivity_matrix = 1.0 - distance_matrix
-            np.fill_diagonal(connectivity_matrix, 0.0)
-            preprocessed_matrices.append(connectivity_matrix)
+        # Use the combined matrices to get representative network properties
+        all_mats = np.concatenate([expert_mats, naive_mats], axis=0)
+        # Use the mean connectivity matrix as reference
+        reference_matrix = np.mean(all_mats, axis=0)
         
         random_matrices = generate_random_networks(
-            preprocessed_matrices, 
-            n_random_networks=args.n_random_nets,
-            preserve_degree_sequence=args.use_config_model
+            reference_matrix, 
+            n_random_networks=args.n_random_networks,
+            preserve_degree_sequence=args.preserve_degree_sequence
         )
-
-        n = np.random.randint(0, len(random_matrices)-1)
-        G = nx.from_numpy_array(random_matrices[n])
-        print(f'Properties of random matrix {n} after preprocessing:')
-        print('Number of nodes:', G.number_of_nodes())
-        print('Number of edges:', G.number_of_edges())
-        print('Density:', nx.density(G))
-        print('Number of connected components:', nx.number_connected_components(G))
-        print('='*50)
-        print()
-
+        
         print("Analyzing random networks...")
         random_results = analyze_random_networks(
             random_matrices, mapping_df,
@@ -832,7 +687,7 @@ def main():
         random_results=random_results,
         homology_dims=args.homology_dims,
         output_dir=args.output_dir,
-        show_plots=not args.no_plot_display
+        show_plots=not args.no_show_plots
     )
     
     # Save results
