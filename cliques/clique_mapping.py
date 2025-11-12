@@ -185,18 +185,19 @@ def map_cliques_to_regions(cliques_df: pd.DataFrame, mapping_df: pd.DataFrame) -
 
 
 def analyze_single_matrix(matrix: np.ndarray, mapping_df: pd.DataFrame, 
-                          output_dir: str, subject_id: str = '', min_clique_size: int = 4) -> pd.DataFrame:
+                          subject_id: str = '', min_clique_size: int = 4) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Perform complete clique analysis on a single connectivity matrix.
     
     Args:
         matrix (np.ndarray): Connectivity matrix.
         mapping_df (pd.DataFrame): Brain region mapping DataFrame.
-        output_dir (str): Directory to save outputs.
         subject_id (str): Identifier for the subject.
         min_clique_size (int): Minimum clique size to detect. Default is 4.
         
     Returns:
-        pd.DataFrame: Complete clique analysis results.
+        Tuple[pd.DataFrame, pd.DataFrame]: 
+            - DataFrame with clique measures (with subject_id column)
+            - DataFrame with node participation (columns: node_id, n_cliques)
     """
     print(f"Analyzing matrix{' for ' + subject_id if subject_id else ''}...")
     
@@ -211,40 +212,28 @@ def analyze_single_matrix(matrix: np.ndarray, mapping_df: pd.DataFrame,
     # Map cliques to regions
     cliques_with_regions = map_cliques_to_regions(cliques_df, mapping_df)
     print(f"  Mapped cliques to brain regions")
+
+    # Add subject_id as first column to clique DataFrame
+    cliques_with_regions.insert(0, 'subject_id', subject_id)
     
     # Compute node participation
     num_nodes = matrix.shape[0]
     node_participation = compute_node_participation(cliques_df, num_nodes)
     print(f"  Computed node participation for {num_nodes} nodes")
     
-    # Add node participation as a column (same value for all rows)
-    cliques_with_regions['node_participation'] = [node_participation] * len(cliques_with_regions)
+    # Create node participation DataFrame
+    node_participation_df = pd.DataFrame([
+        {'node_id': node, 'n_cliques': count}
+        for node, count in sorted(node_participation.items())
+    ])
+
+    # Add subject_id to node participation DataFrame
+    node_participation_df.insert(0, 'subject_id', subject_id)
     
-    # Save results to CSV
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
-    csv_path = output_path / f'clique_analysis_results{("_" + subject_id) if subject_id else ""}.csv'
-    
-    # Flatten lists for CSV export
-    export_df = cliques_with_regions.copy()
-    export_df['nodes'] = export_df['nodes'].apply(lambda x: ','.join(map(str, x)))
-    export_df['yeo7_networks'] = export_df['yeo7_networks'].apply(lambda x: ','.join(x))
-    export_df['yeo17_networks'] = export_df['yeo17_networks'].apply(lambda x: ','.join(x))
-    export_df['gyrus_regions'] = export_df['gyrus_regions'].apply(lambda x: ','.join(x))
-    export_df['lobes'] = export_df['lobes'].apply(lambda x: ','.join(x))
-    export_df['hemispheres'] = export_df['hemispheres'].apply(lambda x: ','.join(x))
-    # Convert node_participation dict to string
-    export_df['node_participation'] = export_df['node_participation'].apply(
-        lambda x: ','.join(f'{k}:{v}' for k, v in sorted(x.items()))
-    )
-    
-    export_df.to_csv(csv_path, index=False)
-    print(f"  Results saved to {csv_path}")
-    
-    return cliques_with_regions
+    return cliques_with_regions, node_participation_df
 
 
-def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str, min_clique_size: int = 4):
+def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str, min_clique_size: int = 4, export_mode: str = 'csv') -> None:
     """Main function to run clique analysis on multiple connectivity matrices.
     
     Args:
@@ -258,8 +247,9 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
     mapping_df = pd.read_csv(mapping_file)
     print(f"  Loaded mapping for {len(mapping_df)} regions")
     
-    # Analyze each connectivity matrix
-    all_results = []
+    # Collect results from all subjects
+    all_clique_measures = []
+    all_node_participation = []
     
     for conn_file in connectivity_files:
 
@@ -287,15 +277,12 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
         print(f"  Min value: {matrix.min()}, Max value: {matrix.max()}")
         del g, components
 
-        # Create subject-specific output directory
-        output_dir = Path(output_base_dir) / subject_id
-        
         # Run analysis
-        results = analyze_single_matrix(matrix, mapping_df, str(output_dir), subject_id, min_clique_size)
+        clique_measures, node_participation = analyze_single_matrix(matrix, mapping_df, subject_id, min_clique_size)
         
-        # Add subject ID to results
-        results['subject_id'] = subject_id
-        all_results.append(results)
+        # Collect results
+        all_clique_measures.append(clique_measures)
+        all_node_participation.append(node_participation)
 
         time_end = time.time()
         elapsed = time_end - time_start
@@ -304,27 +291,40 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
 
     
     # Combine all results
-    if all_results:
-        combined_results = pd.concat(all_results, ignore_index=True)
-        combined_path = Path(output_base_dir) / 'combined_clique_analysis_results.csv'
+    if all_clique_measures:
+        # Create consolidated DataFrames
+        clique_measures_combined = pd.concat(all_clique_measures, ignore_index=True)
+        node_participation_combined = pd.concat(all_node_participation, ignore_index=True)
         
-        # Flatten lists for CSV export
-        export_combined = combined_results.copy()
-        export_combined['nodes'] = export_combined['nodes'].apply(lambda x: ','.join(map(str, x)) if isinstance(x, list) else x)
-        export_combined['yeo7_networks'] = export_combined['yeo7_networks'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
-        export_combined['yeo17_networks'] = export_combined['yeo17_networks'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
-        export_combined['gyrus_regions'] = export_combined['gyrus_regions'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
-        export_combined['lobes'] = export_combined['lobes'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
-        export_combined['hemispheres'] = export_combined['hemispheres'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
-        # Convert node_participation dict to string
-        export_combined['node_participation'] = export_combined['node_participation'].apply(
-            lambda x: ','.join(f'{k}:{v}' for k, v in sorted(x.items())) if isinstance(x, dict) else x
-        )
+        # Create output directory
+        output_path = Path(output_base_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
         
-        export_combined.to_csv(combined_path, index=False)
-        print(f"\nCombined results saved to {combined_path}")
-        print(f"Total cliques analyzed: {len(combined_results)}")
-    
+        # Flatten list columns for clique_measures export
+        export_clique = clique_measures_combined.copy()
+        export_clique['nodes'] = export_clique['nodes'].apply(lambda x: ','.join(map(str, x)) if isinstance(x, list) else x)
+        export_clique['yeo7_networks'] = export_clique['yeo7_networks'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
+        export_clique['yeo17_networks'] = export_clique['yeo17_networks'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
+        export_clique['gyrus_regions'] = export_clique['gyrus_regions'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
+        export_clique['lobes'] = export_clique['lobes'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
+        export_clique['hemispheres'] = export_clique['hemispheres'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
+        
+        # Save both DataFrames
+        print(f"  Total cliques analyzed: {len(clique_measures_combined)}")
+        print(f"Saving consolidated results to {output_path}...")
+
+        if export_mode in ['csv', 'both']:
+            clique_measures_path = output_path / 'clique_measures.csv'
+            node_participation_path = output_path / 'node_participation.csv'
+            export_clique.to_csv(clique_measures_path, index=False)
+            node_participation_combined.to_csv(node_participation_path, index=False)
+
+        if export_mode in ['parquet', 'both']:
+            clique_measures_parquet_path = output_path / 'clique_measures.parquet'
+            node_participation_parquet_path = output_path / 'node_participation.parquet'
+            export_clique.to_parquet(clique_measures_parquet_path, index=False)
+            node_participation_combined.to_parquet(node_participation_parquet_path, index=False)
+            
     print("\nAnalysis complete!")
 
 if __name__ == "__main__":
@@ -335,8 +335,8 @@ if __name__ == "__main__":
 
     current_time = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
     data_folder_name = os.path.basename(default_data_dir)
-    default_output_name = f'clique_analysis_{data_folder_name}_{current_time}'
-    default_output_dir = os.path.join(os.path.dirname(script_dir), 'output', default_output_name)
+    default_output_name = f'clique_mapping_{data_folder_name}_{current_time}'
+    default_output_dir = os.path.join(os.path.dirname(script_dir), 'output', 'clique_mapping', default_output_name)
 
     parser = argparse.ArgumentParser(description='Clique Analysis for Structural Connectivity Networks')
     parser.add_argument('--data_dir', type=str, default=default_data_dir,
@@ -349,9 +349,13 @@ if __name__ == "__main__":
                         help='File pattern to match (e.g., "*.csv", "*.npy")')
     parser.add_argument('--min_clique', type=int, default=4,
                         help='Minimum clique size to detect (default: 4)')
-    
+    parser.add_argument('--export_mode', type=str, choices=['csv', 'parquet', 'both'], default='csv',
+                        help='Export format for results (default: csv)')
+
     args = parser.parse_args()
     
+    print(f"Starting clique analysis...")
+
     # Find all connectivity files matching pattern
     connectivity_files = glob.glob(os.path.join(args.data_dir, args.pattern))
     
@@ -359,7 +363,8 @@ if __name__ == "__main__":
         print(f"Found {len(connectivity_files)} connectivity files in {args.data_dir}")
         print(f"Output will be saved to: {args.output_dir}")
         print(f"Minimum clique size: {args.min_clique}")
-        main(connectivity_files, args.mapping_file, args.output_dir, args.min_clique)
+        print(f"Export mode: {args.export_mode}")
+        main(connectivity_files, args.mapping_file, args.output_dir, args.min_clique, args.export_mode)
     else:
         print(f"No connectivity files found matching pattern '{args.pattern}' in {args.data_dir}")
         print("Please check the data directory and pattern.")
