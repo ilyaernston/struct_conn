@@ -1,29 +1,26 @@
 """
-Visualization script for clique mapping analysis results.
+Visualization script for clique measures analysis.
 
-This script generates visualizations from clique_measures and node_participation data:
-1. Line plot of node participation averaged across subjects with SD bands
-2. Box plot of clique size by Yeo-7 network
-3. Box plot of clique size by primary gyrus
-4. Box plot of volume by Yeo-7 network
-5. Box plot of volume by primary gyrus
-6. Box plot of average degree by Yeo-7 network
-7. Box plot of average degree by primary gyrus
-8. Box plot of boundary edges by Yeo-7 network
-9. Box plot of boundary edges by primary gyrus
-10. Box plot of boundary ratio by Yeo-7 network
-11. Box plot of boundary ratio by primary gyrus
-12. Box plot of average embeddedness by Yeo-7 network
-13. Box plot of average embeddedness by primary gyrus
+This script generates visualizations from clique_measures data:
+1. Box plot of clique size by Yeo-7 network
+2. Box plot of clique size by primary gyrus
+3. Box plot of volume by Yeo-7 network
+4. Box plot of volume by primary gyrus
+5. Box plot of average degree by Yeo-7 network
+6. Box plot of average degree by primary gyrus
+7. Box plot of boundary edges by Yeo-7 network
+8. Box plot of boundary edges by primary gyrus
+9. Box plot of boundary ratio by Yeo-7 network
+10. Box plot of boundary ratio by primary gyrus
+11. Box plot of average embeddedness by Yeo-7 network
+12. Box plot of average embeddedness by primary gyrus
 """
 
-import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
 import argparse
-from typing import Dict, Tuple, Optional, List
+from typing import Optional, List
 import os
 
 
@@ -53,15 +50,14 @@ LOBE_COLORS = {
 }
 
 
-def load_data(clique_measures_path: str, node_participation_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """Load clique measures and node participation data.
+def load_clique_measures(clique_measures_path: str) -> pd.DataFrame:
+    """Load clique measures data.
     
     Args:
         clique_measures_path: Path to clique measures file (csv or parquet).
-        node_participation_path: Path to node participation file (csv or parquet).
         
     Returns:
-        Tuple of (clique_measures_df, node_participation_df)
+        Clique measures DataFrame
     """
     # Determine file format and load
     if clique_measures_path.endswith('.parquet'):
@@ -69,152 +65,9 @@ def load_data(clique_measures_path: str, node_participation_path: str) -> Tuple[
     else:
         clique_measures = pd.read_csv(clique_measures_path)
     
-    if node_participation_path.endswith('.parquet'):
-        node_participation = pd.read_parquet(node_participation_path)
-    else:
-        node_participation = pd.read_csv(node_participation_path)
-    
     print(f"Loaded {len(clique_measures)} clique measures from {len(clique_measures['subject_id'].unique())} subjects")
-    print(f"Loaded node participation data for {len(node_participation['node_id'].unique())} unique nodes")
     
-    return clique_measures, node_participation
-
-
-def get_node_yeo7_mapping(clique_measures: pd.DataFrame) -> Dict[int, str]:
-    """Extract node to Yeo-7 network mapping from clique measures.
-    
-    For each node, determine the most common Yeo-7 network it belongs to
-    across all cliques it participates in.
-    
-    Args:
-        clique_measures: DataFrame with clique measures.
-        
-    Returns:
-        Dictionary mapping node_id to Yeo-7 network name.
-    """
-    node_networks = {}
-    
-    for _, row in clique_measures.iterrows():
-        # Parse nodes from comma-separated string
-        if isinstance(row['nodes'], str):
-            nodes = [int(n) for n in row['nodes'].split(',')]
-        else:
-            nodes = row['nodes']
-        
-        yeo7_primary = row['yeo7_primary']
-        
-        # Assign this network to all nodes in the clique
-        for node in nodes:
-            if node not in node_networks:
-                node_networks[node] = []
-            node_networks[node].append(yeo7_primary)
-    
-    # For each node, pick the most common network
-    node_yeo7_map = {}
-    for node, networks in node_networks.items():
-        # Get most common network
-        network_counts = pd.Series(networks).value_counts()
-        node_yeo7_map[node] = network_counts.index[0]
-    
-    return node_yeo7_map
-
-
-def plot_node_participation(node_participation: pd.DataFrame, node_yeo7_map: Dict[int, str], 
-                            output_dir: Path, show_plot: bool = False):
-    """Create line plot of node participation averaged across subjects.
-    
-    Args:
-        node_participation: DataFrame with columns [subject_id, node_id, n_cliques].
-        node_yeo7_map: Dictionary mapping node_id to Yeo-7 network.
-        output_dir: Directory to save the plot.
-        show_plot: Whether to display the plot interactively.
-    """
-    print("\nGenerating node participation plot...")
-    
-    # Calculate mean and std for each node across subjects
-    node_stats = node_participation.groupby('node_id')['n_cliques'].agg(['mean', 'std']).reset_index()
-    node_stats['std'] = node_stats['std'].fillna(0)  # Handle single subject case
-    
-    # Add Yeo-7 network mapping
-    node_stats['yeo7_network'] = node_stats['node_id'].map(node_yeo7_map)
-    node_stats['yeo7_network'] = node_stats['yeo7_network'].fillna('Unknown')
-    
-    # Sort by Yeo-7 network first, then by node_id within each network
-    node_stats = node_stats.sort_values(['yeo7_network', 'node_id'])
-    
-    # Reset index for plotting
-    node_stats = node_stats.reset_index(drop=True)
-    
-    # Create figure
-    fig, ax = plt.subplots(figsize=(16, 6))
-    
-    # Create x-axis positions
-    x_positions = np.arange(len(node_stats))
-    
-    # Add background color-coding by network
-    current_network = node_stats['yeo7_network'].iloc[0]
-    start_idx = 0
-    
-    for i, network in enumerate(node_stats['yeo7_network']):
-        if i == len(node_stats) - 1 or node_stats['yeo7_network'].iloc[i + 1] != current_network:
-            # End of current network group
-            end_idx = i + 1
-            color = YEO7_COLORS.get(current_network, '#808080')
-            ax.axvspan(start_idx - 0.5, end_idx - 0.5, facecolor=color, alpha=0.15)
-            
-            # Add vertical line to separate networks (except at the end)
-            if i < len(node_stats) - 1:
-                ax.axvline(x=end_idx - 0.5, color='gray', linestyle='--', linewidth=1.5, alpha=0.5)
-            
-            # Update for next network
-            if i < len(node_stats) - 1:
-                current_network = node_stats['yeo7_network'].iloc[i + 1]
-                start_idx = i + 1
-    
-    # Plot main line for mean node participation
-    ax.plot(x_positions, node_stats['mean'], 
-           color='black', linewidth=2, label='Mean', alpha=0.8, zorder=3)
-    
-    # Plot SD bands
-    ax.fill_between(x_positions, 
-                    node_stats['mean'] - node_stats['std'],
-                    node_stats['mean'] + node_stats['std'],
-                    color='gray', alpha=0.3, label='±1 SD', zorder=2)
-    
-    # Set x-axis labels (remove node IDs for cleaner look)
-    ax.set_xticks([])
-    
-    # Create legend with network labels
-    from matplotlib.patches import Patch
-    from matplotlib.lines import Line2D
-    
-    unique_networks = list(dict.fromkeys(node_stats['yeo7_network'].tolist()))  # Preserve order
-    
-    # Build legend elements
-    legend_elements = []
-    legend_elements.append(Line2D([0], [0], color='black', linewidth=2, label='Mean'))
-    legend_elements.append(Patch(facecolor='gray', alpha=0.3, label='±1 SD'))
-    
-    for network in unique_networks:
-        legend_elements.append(Patch(facecolor=YEO7_COLORS.get(network, '#808080'), alpha=0.3, label=network))
-    
-    ax.set_xlabel('Network Nodes', fontsize=12)
-    ax.set_ylabel('Node Participation (Mean ± SD)', fontsize=12)
-    ax.set_title('Node Participation in Maximal Cliques by Yeo-7 Network', fontsize=14, fontweight='bold')
-    ax.legend(handles=legend_elements, loc='upper right', frameon=True, fancybox=True, shadow=True, ncol=1)
-    ax.grid(True, alpha=0.3, linestyle='--', axis='y')
-    
-    plt.tight_layout()
-    
-    # Save plot
-    output_path = output_dir / 'node_participation_by_network.png'
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"  Saved to {output_path}")
-    
-    if show_plot:
-        plt.show()
-    else:
-        plt.close()
+    return clique_measures
 
 
 def plot_metric_by_yeo7(clique_measures: pd.DataFrame, metric_col: str, metric_label: str,
@@ -397,36 +250,27 @@ def plot_metric_by_gyrus(clique_measures: pd.DataFrame, metric_col: str, metric_
         plt.close()
 
 
-def main(clique_measures_path: str, node_participation_path: str, 
-         output_dir: str, metrics_to_plot: Optional[List[str]] = None, show_plots: bool = False):
-    """Main function to generate all visualizations.
+def main(clique_measures_path: str, output_dir: str, 
+         metrics_to_plot: Optional[List[str]] = None, show_plots: bool = False):
+    """Main function to generate all clique measures visualizations.
     
     Args:
         clique_measures_path: Path to clique measures file.
-        node_participation_path: Path to node participation file.
         output_dir: Directory to save plots.
         metrics_to_plot: List of metric names to plot. If None, plots all metrics.
         show_plots: Whether to display plots interactively.
     """
     print("="*80)
-    print("Clique Mapping Results Visualization")
+    print("Clique Measures Visualization")
     print("="*80)
     
     # Load data
-    clique_measures, node_participation = load_data(clique_measures_path, node_participation_path)
+    clique_measures = load_clique_measures(clique_measures_path)
     
     # Create output directory
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     print(f"\nOutput directory: {output_path}")
-    
-    # Get node to Yeo-7 network mapping
-    print("\nExtracting node to Yeo-7 network mapping...")
-    node_yeo7_map = get_node_yeo7_mapping(clique_measures)
-    print(f"  Mapped {len(node_yeo7_map)} nodes to Yeo-7 networks")
-    
-    # Generate node participation plot
-    plot_node_participation(node_participation, node_yeo7_map, output_path, show_plots)
     
     # Define all available metrics
     all_metrics = [
@@ -466,28 +310,28 @@ if __name__ == "__main__":
 
     current_time = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    default_output_name = f'clique_visualization_{current_time}'
+    default_output_name = f'clique_measures_visualization_{current_time}'
     default_output_dir = os.path.join(os.path.dirname(script_dir), 'output', 'clique_visualizations', default_output_name)
 
     parser = argparse.ArgumentParser(
-        description='Visualize clique mapping analysis results',
+        description='Visualize clique measures analysis results',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
   # Using CSV files
-  python visualize_clique_mapping.py --clique_measures clique_measures.csv --node_participation node_participation.csv
+  python visualize_clique_measures.py --clique_measures clique_measures.csv
   
   # Using Parquet files
-  python visualize_clique_mapping.py --clique_measures clique_measures.parquet --node_participation node_participation.parquet
+  python visualize_clique_measures.py --clique_measures clique_measures.parquet
   
   # Custom output directory and show plots
-  python visualize_clique_mapping.py -c clique_measures.csv -n node_participation.csv -o ./viz --show
+  python visualize_clique_measures.py -c clique_measures.csv -o ./viz --show
   
   # Plot only specific metrics
-  python visualize_clique_mapping.py -c clique_measures.csv -n node_participation.csv --metrics clique_size clique_conductance
+  python visualize_clique_measures.py -c clique_measures.csv --metrics clique_size clique_conductance
   
   # Plot all metrics (default)
-  python visualize_clique_mapping.py -c clique_measures.csv -n node_participation.csv
+  python visualize_clique_measures.py -c clique_measures.csv
 
 Available metrics:
   clique_size            - Clique Size
@@ -501,12 +345,10 @@ Available metrics:
     
     parser.add_argument('-c', '--clique_measures', type=str, required=True,
                         help='Path to clique measures file (CSV or Parquet)')
-    parser.add_argument('-n', '--node_participation', type=str, required=True,
-                        help='Path to node participation file (CSV or Parquet)')
     parser.add_argument('-o', '--output_dir', type=str, default=default_output_dir,
-                        help='Output directory for plots (default: ../output/clique_visualizations/clique_visualization_<timestamp>)')
+                        help='Output directory for plots (default: ../output/clique_visualizations/clique_measures_visualization_<timestamp>)')
     parser.add_argument('--metrics', nargs='+',
-                        help='Metrics to plot. Specify metric names to plot only those (default: all metrics). Available metrics: clique_size, clique_volume, clique_avg_degree, clique_boundary_edges, clique_boundary_ratio, clique_avg_embeddedness  ')
+                        help='Metrics to plot. Specify metric names to plot only those (default: all metrics). Available metrics: clique_size, clique_volume, clique_avg_degree, clique_boundary_edges, clique_boundary_ratio, clique_avg_embeddedness')
     parser.add_argument('--show', action='store_true',
                         help='Display plots interactively (default: False)')
     
@@ -514,7 +356,6 @@ Available metrics:
     
     main(
         clique_measures_path=args.clique_measures,
-        node_participation_path=args.node_participation,
         output_dir=args.output_dir,
         metrics_to_plot=args.metrics,
         show_plots=args.show

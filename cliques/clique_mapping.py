@@ -43,19 +43,16 @@ def compute_clique_metrics(clique: list, g: Graph) -> List[float]:
         g: igraph Graph object.
         
     Returns:
-        List of metrics: [size, deg_in, total_ext_deg, cond, avg_ext_deg, bound_ratio]
+        List of metrics: [size, volume, avg_degree, boundary_edges, boundary_ratio, avg_embeddedness]
     """
     s = len(clique) # size of clique
-    deg_in = s*(s-1)//2 # clique inner degree: number of internal edges in the clique
     vol = sum(g.degree(v) for v in clique) # volume: sum of degrees of all nodes in the clique
     avg_deg = vol / s if s else 0.0 # average degree of nodes in the clique
-    total_ext_deg = sum(g.degree(v) - (s - 1) for v in clique) # boundary degree: total external degree (of all nodes in the clique)
-    avg_ext_deg = total_ext_deg / s if s else 0.0 # average external degree of nodes in the clique
-    cond = total_ext_deg / vol if vol else 0.0 # conductance: ratio of boundary edges to volume
-    bound_ratio = total_ext_deg / deg_in if deg_in else 0.0 # boundary ratio: ratio of boundary edges to internal edges
+    n_bound_edges = sum(g.degree(v) - (s - 1) for v in clique) # number of boundary edges: sum of external degrees of all nodes in the clique
+    bound_ratio = n_bound_edges / vol if vol else 0.0 # boundary ratio (aka conductance): ratio of boundary edges to volume
+    avg_embed = sum((s - 1) / g.degree(v) if g.degree(v) > 0 else 0.0 for v in clique) / s if s else 0.0 # average node embeddedness in the clique
 
-    return [float(s), float(deg_in), float(total_ext_deg), float(cond), float(avg_ext_deg), float(bound_ratio)]
-
+    return [float(s), float(vol), float(avg_deg), float(n_bound_edges), float(bound_ratio), float(avg_embed)]
 
 
 def detect_cliques(matrix: np.ndarray, min_size: int = 4) -> pd.DataFrame:
@@ -70,11 +67,11 @@ def detect_cliques(matrix: np.ndarray, min_size: int = 4) -> pd.DataFrame:
             - clique_index: Index of the clique
             - nodes: List of nodes in the clique
             - clique_size: Number of nodes in the clique
-            - clique_deg_in: Internal degree of the clique
-            - clique_total_ext_deg: Total external degree
-            - clique_conductance: Conductance metric
-            - clique_avg_ext_deg: Average external degree
-            - clique_bound_ratio: Boundary ratio
+            - clique_volume: Volume (sum of degrees) of the clique
+            - clique_avg_degree: Average degree of nodes in the clique
+            - clique_boundary_edges: Number of boundary edges
+            - clique_boundary_ratio: Boundary ratio (conductance)
+            - clique_avg_embeddedness: Average node embeddedness
     """
     # Create igraph graph
     graph = Graph.Weighted_Adjacency(matrix.tolist(), mode='undirected', attr='weight', loops='ignore')
@@ -88,17 +85,17 @@ def detect_cliques(matrix: np.ndarray, min_size: int = 4) -> pd.DataFrame:
     for idx, clique in enumerate(cliques):
         # Compute metrics using the integrated function
         metrics = compute_clique_metrics(clique, graph)
-        # metrics = [size, deg_in, total_ext_deg, cond, avg_ext_deg, bound_ratio]
+        # metrics = [size, volume, avg_degree, boundary_edges, boundary_ratio, avg_embeddedness]
         
         clique_data.append({
             'clique_index': idx,
             'nodes': list(clique),  # Convert to list for DataFrame storage
             'clique_size': int(metrics[0]),
-            'clique_deg_in': int(metrics[1]),
-            'clique_total_ext_deg': int(metrics[2]),
-            'clique_conductance': metrics[3],
-            'clique_avg_ext_deg': metrics[4],
-            'clique_bound_ratio': metrics[5]
+            'clique_volume': int(metrics[1]),
+            'clique_avg_degree': metrics[2],
+            'clique_boundary_edges': int(metrics[3]),
+            'clique_boundary_ratio': metrics[4],
+            'clique_avg_embeddedness': metrics[5]
         })
     
     return pd.DataFrame(clique_data)
@@ -206,8 +203,10 @@ def analyze_single_matrix(matrix: np.ndarray, mapping_df: pd.DataFrame,
     print(f"  Found {len(cliques_df)} maximal cliques")
     print(f"  Max clique size: {cliques_df['clique_size'].max()}, minimum clique size: {cliques_df['clique_size'].min()}")
     print(f"  Average clique size: {cliques_df['clique_size'].mean():.4f}")
-    print(f"  Average conductance: {cliques_df['clique_conductance'].mean():.4f}")
-    print(f"  Average boundary ratio: {cliques_df['clique_bound_ratio'].mean():.4f}")
+    print(f"  Average volume: {cliques_df['clique_volume'].mean():.4f}")
+    print(f"  Average degree: {cliques_df['clique_avg_degree'].mean():.4f}")
+    print(f"  Average boundary ratio: {cliques_df['clique_boundary_ratio'].mean():.4f}")
+    print(f"  Average embeddedness: {cliques_df['clique_avg_embeddedness'].mean():.4f}")
     
     # Map cliques to regions
     cliques_with_regions = map_cliques_to_regions(cliques_df, mapping_df)
@@ -333,15 +332,10 @@ if __name__ == "__main__":
     default_data_dir = os.path.join(os.path.dirname(script_dir), 'data', 'test_sample')
     default_mapping_file = os.path.join(os.path.dirname(script_dir), 'data', 'mapping.csv')
 
-    current_time = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
-    data_folder_name = os.path.basename(default_data_dir)
-    default_output_name = f'clique_mapping_{data_folder_name}_{current_time}'
-    default_output_dir = os.path.join(os.path.dirname(script_dir), 'output', 'clique_mapping', default_output_name)
-
     parser = argparse.ArgumentParser(description='Clique Analysis for Structural Connectivity Networks')
     parser.add_argument('--data_dir', type=str, default=default_data_dir,
                         help='Directory containing connectivity matrix files (.csv or .npy)')
-    parser.add_argument('--output_dir', type=str, default=default_output_dir,
+    parser.add_argument('--output_dir', type=str, default=None,
                         help='Output directory for results and visualizations')
     parser.add_argument('--mapping_file', type=str, default=default_mapping_file,
                         help='Path to brain region mapping CSV file')
@@ -353,6 +347,13 @@ if __name__ == "__main__":
                         help='Export format for results (default: csv)')
 
     args = parser.parse_args()
+
+    # Generate default output directory based on actually used data_dir
+    if args.output_dir is None:
+        current_time = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+        data_folder_name = os.path.basename(args.data_dir)
+        default_output_name = f'clique_mapping_{data_folder_name}_{current_time}'
+        args.output_dir = os.path.join(os.path.dirname(script_dir), 'output', 'clique_mapping', default_output_name)
     
     print(f"Starting clique analysis...")
 
