@@ -15,7 +15,7 @@ Analysis steps:
 """
 
 from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Set
+from typing import Dict, List, Tuple, Optional
 import argparse
 import os
 import glob
@@ -23,58 +23,75 @@ import time
 
 import numpy as np
 import pandas as pd
+import networkx as nx
 
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-from ripser import ripser
+import gudhi as gd
 from preprocessing import drop_cerebellum, connect_components, normalize
 
 
+def preprocess_matrix(matrix: np.ndarray, 
+                      mapping_df: pd.DataFrame,
+                      drop_cerebellum_flag: bool = True, 
+                      connect_components_flag: bool = True) -> np.ndarray:
+            # Preprocess matrix
+    print(f"Preprocessing matrix...")
+    if drop_cerebellum_flag:
+        matrix = drop_cerebellum(matrix, mapping_df)
+    if connect_components_flag:
+        matrix = connect_components(matrix, mapping_df) # type: ignore
+    matrix = normalize(matrix)  # type: ignore
+    # Convert to distance: higher connectivity = smaller distance
+    distance_matrix = 1.0 - matrix
+    np.fill_diagonal(distance_matrix, 0.0)
+    print(f"  Preprocessed matrix shape: {matrix.shape}")
+    print(f"  Min value: {matrix.min():.4f}, Max value: {matrix.max():.4f}")
+
+    return distance_matrix
+
 def compute_persistence(matrix: np.ndarray, max_dimension: int = 2) -> Dict:
-    """Compute persistent homology using Ripser with cocycle representatives.
-    
-    Weight Rank Clique Filtration: edges with higher weights appear earlier
-    in the filtration, so we use (1 - normalized_weight) as distance.
+    """
+    Compute persistent homology using Gudhi's Rips complex.
     
     Args:
-        matrix: Connectivity matrix
+        matrix: Distance adjacency matrix (lower values = stronger connections)
         max_dimension: Maximum homology dimension to compute (default: 2)
         
     Returns:
-        Dictionary containing persistence diagrams, cocycles, and related information
+        Dictionary containing persistence diagrams and the Rips complex object
     """
-    # Ensure matrix is normalized to [0, 1]
-    if matrix.max() > 1.0 or matrix.min() < 0.0:
-        matrix = normalize(matrix)
-    
-    # Convert to distance: higher connectivity = smaller distance
-    distance_matrix = 1.0 - matrix
-    
-    # Set diagonal to 0
-    np.fill_diagonal(distance_matrix, 0.0)
     
     try:
-        # Compute persistent homology using ripser with cocycles
-        persistence_result = ripser(
-            distance_matrix,
-            maxdim=max_dimension,
-            thresh=np.inf,
-            coeff=2,  # Use Z/2Z coefficients
-            do_cocycles=True,
-            distance_matrix=True
-        )
+        # Create Rips complex from distance matrix
+        rips_complex = gd.RipsComplex( 
+            distance_matrix=matrix,
+            max_edge_length=1.0
+        ) 
         
-        # Extract persistence diagrams
-        dgms = persistence_result['dgms']
-        cocycles = persistence_result.get('cocycles', [])
+        # Create simplex tree with specified max dimension
+        simplex_tree = rips_complex.create_simplex_tree(max_dimension=max_dimension)
+        
+        # Compute persistence
+        simplex_tree.compute_persistence()
+        
+        # Extract persistence diagrams by dimension
+        persistence_pairs = simplex_tree.persistence()
+        
+        # Organize by dimension
+        dgms = {}
+        for dim in range(max_dimension + 1):
+            pairs = [(birth, death) for (d, (birth, death)) in persistence_pairs if d == dim]
+            dgms[dim] = np.array(pairs) if pairs else np.array([]).reshape(0, 2)
         
         results = {
+            'simplex_tree': simplex_tree,
+            'persistence_pairs': persistence_pairs,
             'dgms': dgms,
-            'cocycles': cocycles,
-            'h0_persistence': dgms[0] if len(dgms) > 0 else np.array([]),
-            'h1_persistence': dgms[1] if len(dgms) > 1 else np.array([]),
-            'h2_persistence': dgms[2] if len(dgms) > 2 else np.array([]),
-            'num_edges': persistence_result.get('num_edges', 0)
+            'h0_persistence': dgms.get(0, np.array([])),
+            'h1_persistence': dgms.get(1, np.array([])),
+            'h2_persistence': dgms.get(2, np.array([])),
         }
         
         return results
@@ -83,136 +100,117 @@ def compute_persistence(matrix: np.ndarray, max_dimension: int = 2) -> Dict:
         print(f"Error computing persistence: {e}")
         return {'error': str(e)}
 
-
-def extract_nodes_from_cocycle(cocycle: np.ndarray, dimension: int, n_points: int) -> Set[int]:
-    """Extract unique node IDs from a cocycle representative.
-    
-    Decodes ripser's simplex indices to get actual vertex IDs.
+def extract_representative_cycles(
+    distance_matrix: np.ndarray,
+    simplex_tree: gd.SimplexTree,
+    persistence_pairs: List,
+    top_k: int = 5
+) -> List[Dict]:
+    """
+    Extract representative cycles for the most persistent H1 features using Gudhi.
     
     Args:
-        cocycle: Array of [simplex_idx, coefficient] pairs from ripser
-        dimension: Dimension of the homology (1 for edges, 2 for triangles)
-        n_points: Number of points in the original distance matrix
+        distance_matrix: The distance matrix used for persistence computation
+        simplex_tree: The Gudhi SimplexTree object
+        persistence_pairs: List of (dimension, (birth, death)) tuples
+        top_k: Number of most persistent loops to extract
         
     Returns:
-        Set of node IDs matching matrix row/column indices
+        List of dictionaries containing cycle information
     """
-    nodes = set()
     
-    for entry in cocycle:
-        if len(entry) >= 1:
-            simplex_idx = int(entry[0])
-            vertices = decode_simplex_index(simplex_idx, dimension + 1, n_points)
-            nodes.update(vertices)
+    # Filter for H1 features only
+    h1_features = [(idx, birth, death) for idx, (dim, (birth, death)) in enumerate(persistence_pairs) if dim == 1]
     
-    return nodes
-
-
-def decode_simplex_index(idx: int, simplex_dim: int, n_points: int) -> List[int]:
-    """Decode simplex index to vertices using combinatorial number system.
+    if not h1_features:
+        print("No H1 features detected.")
+        return []
     
-    Ripser uses binomial coefficient encoding. This reverses it via greedy algorithm.
+    # Sort by persistence (death - birth)
+    h1_features_sorted = sorted(
+        h1_features, 
+        key=lambda f: f[2] - f[1],  # death - birth
+        reverse=True
+    )
+    top_features = h1_features_sorted[:top_k]
     
-    Args:
-        idx: Simplex index from ripser
-        simplex_dim: Number of vertices (2 for edges, 3 for triangles)
-        n_points: Total number of points
+    results = []
+    
+    for feature_idx, (orig_idx, birth, death) in enumerate(top_features):
+        persistence_value = death - birth
         
-    Returns:
-        Sorted list of vertex indices
-    """
-    from math import comb
-    
-    vertices = []
-    remaining_idx = idx
-    
-    for i in range(simplex_dim, 0, -1):
-        v = i - 1
-        while v < n_points:
-            if comb(v + 1, i) > remaining_idx:
-                break
-            v += 1
+        # Get the persistence pair (simplex that creates and destroys the cycle)
+        dim, pair = persistence_pairs[orig_idx]
         
-        vertices.append(v)
-        if v >= i:
-            remaining_idx -= comb(v, i)
-    
-    return sorted(vertices)
-
-
-def compute_homology_metrics(birth: float, death: float) -> Dict[str, float]:
-    """Compute metrics for a single homology class.
-    
-    Args:
-        birth: Birth filtration value (ρ_b)
-        death: Death filtration value (ρ_d)
+        # In Gudhi, we can extract the edges that form the cycle by looking at
+        # the 1-skeleton (edges) that exist at the birth time
+        edges_at_birth = []
         
-    Returns:
-        Dictionary with lifetime and death-birth ratio
-    """
-    lifetime = death - birth
-    death_birth_ratio = death / birth if birth > 0 else np.inf
-    
-    return {
-        'lifetime': lifetime,
-        'death_birth_ratio': death_birth_ratio
-    }
-
-
-def extract_homology_features(dgm: np.ndarray, dimension: int, subject_id: str, 
-                            cocycles: Optional[List] = None, n_points: int = 0) -> pd.DataFrame:
-    """Extract features from a persistence diagram for a specific dimension.
-    
-    Args:
-        dgm: Persistence diagram (N x 2 array of [birth, death] pairs)
-        dimension: Homology dimension (1 for loops, 2 for voids)
-        subject_id: Subject identifier
-        cocycles: Optional list of cocycle representatives from ripser
-        n_points: Number of nodes in the connectivity matrix
+        # Get all edges (1-simplices) with filtration value <= birth + small epsilon
+        epsilon = 1e-10
+        for simplex, filtration in simplex_tree.get_filtration():
+            if len(simplex) == 2 and filtration <= birth + epsilon:
+                edges_at_birth.append((simplex[0], simplex[1], filtration))
         
-    Returns:
-        DataFrame with homology features including node participation
-    """
-    if len(dgm) == 0:
-        return pd.DataFrame()
-    
-    features = []
-    for idx, (birth, death) in enumerate(dgm):
-        # Skip infinite persistence (connected components for H0)
-        if np.isinf(death):
+        if not edges_at_birth:
             continue
-            
-        metrics = compute_homology_metrics(birth, death)
         
-        # Extract participating nodes from cocycle if available
-        participating_nodes = []
-        num_nodes = 0
-        if cocycles is not None and idx < len(cocycles) and n_points > 0:
-            try:
-                cocycle = cocycles[idx]
-                nodes = extract_nodes_from_cocycle(cocycle, dimension, n_points)
-                participating_nodes = sorted(list(nodes))
-                num_nodes = len(participating_nodes)
-            except Exception as e:
-                # If extraction fails, continue without node info
-                pass
+        # Build a graph from edges at birth time to find the cycle
+        # The cycle is created when a new edge closes a loop
+        G = nx.Graph()
+        for u, v, filt in edges_at_birth:
+            weight = distance_matrix[u, v]
+            G.add_edge(u, v, weight=weight, filtration=filt)
         
-        feature = {
-            'subject_id': subject_id,
-            'homology_id': idx,
-            'dimension': dimension,
-            'birth_filtration': float(birth),
-            'death_filtration': float(death),
-            'lifetime': metrics['lifetime'],
-            'death_birth_ratio': metrics['death_birth_ratio'],
-            'num_nodes': num_nodes,
-            'participating_nodes': str(participating_nodes) if participating_nodes else '[]'
-        }
+        # Find the edge that creates the cycle (closest to birth time)
+        creator_edge = None
+        min_diff = float('inf')
+        for u, v, filt in edges_at_birth:
+            diff = abs(filt - birth)
+            if diff < min_diff:
+                min_diff = diff
+                creator_edge = (u, v)
         
-        features.append(feature)
+        if creator_edge is None:
+            continue
+        
+        # Find shortest cycle containing the creator edge
+        u, v = creator_edge
+        
+        # Temporarily remove the creator edge and find shortest path between u and v
+        G_temp = G.copy()
+        if G_temp.has_edge(u, v):
+            G_temp.remove_edge(u, v)
+        
+        try:
+            # Find shortest path (by weight) between u and v
+            if nx.has_path(G_temp, u, v):
+                path = nx.shortest_path(G_temp, u, v, weight='weight')
+                
+                # Create the cycle by adding the creator edge back
+                cycle_nodes = path
+                cycle_edges = [(cycle_nodes[i], cycle_nodes[i+1]) for i in range(len(cycle_nodes)-1)]
+                cycle_edges.append((cycle_nodes[-1], cycle_nodes[0]))
+                
+                # Calculate total cost
+                total_cost = sum(distance_matrix[u, v] for u, v in cycle_edges)
+                
+                results.append({
+                    'persistence_id': feature_idx,
+                    'lifetime': float(persistence_value),
+                    'death_birth_ratio': float(death / birth) if birth > 0 else float('inf'),
+                    'birth': float(birth),
+                    'death': float(death),
+                    'nodes': cycle_nodes,
+                    'edges': cycle_edges,
+                    'total_cost': float(total_cost),
+                    'num_nodes': len(cycle_nodes)
+                })
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            print(f"Could not find path for cycle {feature_idx}")
+            continue
     
-    return pd.DataFrame(features)
-
+    return results
 
 def compute_betti_curve(dgm: np.ndarray, num_points: int = 100) -> Tuple[np.ndarray, np.ndarray]:
     """Compute Betti curve from persistence diagram.
@@ -246,22 +244,27 @@ def compute_betti_curve(dgm: np.ndarray, num_points: int = 100) -> Tuple[np.ndar
     return filtration_values, betti_numbers
 
 
-def plot_persistence_diagram(dgms: List[np.ndarray], subject_id: str, output_dir: Path):
-    """Plot persistence diagram for all dimensions.
+def plot_persistence_diagram(dgms: Dict, subject_id: str, output_dir: Path):
+    """Plot persistence diagram showing all dimensions on a single plot.
     
     Args:
-        dgms: List of persistence diagrams for each dimension
+        dgms: Dictionary mapping dimension to persistence diagrams
         subject_id: Subject identifier
         output_dir: Directory to save the plot
     """
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
-    dimension_names = ['H₀ (Components)', 'H₁ (Loops)', 'H₂ (Voids)']
-    colors = ['blue', 'red', 'green']
+    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
     
-    for dim, (ax, dgm, name, color) in enumerate(zip(axes, dgms[:3], dimension_names, colors)):
+    # Use seaborn color palette
+    colors = sns.color_palette('tab10', 3)
+    dimension_names = ['H₀ (Components)', 'H₁ (Loops)', 'H₂ (Voids)']
+    markers = ['o', 's', '^']  # circle, square, triangle
+    
+    max_val = 0
+    total_features = 0
+    
+    for dim in range(3):
+        dgm = dgms.get(dim, np.array([]))
         if len(dgm) == 0:
-            ax.text(0.5, 0.5, 'No features', ha='center', va='center', transform=ax.transAxes)
-            ax.set_title(name)
             continue
         
         # Filter out infinite persistence
@@ -269,22 +272,30 @@ def plot_persistence_diagram(dgms: List[np.ndarray], subject_id: str, output_dir
         
         if len(finite_dgm) > 0:
             # Plot points
-            ax.scatter(finite_dgm[:, 0], finite_dgm[:, 1], alpha=0.6, c=color, s=30)
+            ax.scatter(finite_dgm[:, 0], finite_dgm[:, 1], 
+                      alpha=0.7, c=[colors[dim]], s=50, 
+                      marker=markers[dim], 
+                      label=f'{dimension_names[dim]} ({len(finite_dgm)})',
+                      edgecolors='white', linewidth=0.5)
             
-            # Plot diagonal
-            max_val = max(finite_dgm.max(), 1.0)
-            ax.plot([0, max_val], [0, max_val], 'k--', alpha=0.3, linewidth=1)
-            
-            ax.set_xlabel('Birth (ρ_b)', fontsize=10)
-            ax.set_ylabel('Death (ρ_d)', fontsize=10)
-            ax.set_title(f'{name} ({len(finite_dgm)} features)', fontsize=11)
-            ax.grid(True, alpha=0.3)
-            ax.set_aspect('equal')
-        else:
-            ax.text(0.5, 0.5, 'All infinite', ha='center', va='center', transform=ax.transAxes)
-            ax.set_title(name)
+            max_val = max(max_val, finite_dgm.max())
+            total_features += len(finite_dgm)
     
-    plt.suptitle(f'Persistence Diagram - {subject_id}', fontsize=13, fontweight='bold')
+    if total_features == 0:
+        ax.text(0.5, 0.5, 'No finite features detected', 
+               ha='center', va='center', transform=ax.transAxes, fontsize=12)
+    else:
+        # Plot diagonal
+        max_val = max(max_val, 1.0)
+        ax.plot([0, max_val], [0, max_val], 'k--', alpha=0.4, linewidth=1.5, label='y = x')
+        
+        ax.set_xlabel(f'Birth ($\\rho_b$)', fontsize=12)
+        ax.set_ylabel(f'Death ($\\rho_d$)', fontsize=12)
+        ax.grid(True, alpha=0.3, linestyle=':')
+        ax.set_aspect('equal')
+        ax.legend(loc='lower right', framealpha=0.9)
+    
+    ax.set_title(f'Persistence Diagram', fontsize=13, pad=15)
     plt.tight_layout()
     
     output_path = output_dir / f'persistence_diagram_{subject_id}.png'
@@ -293,40 +304,62 @@ def plot_persistence_diagram(dgms: List[np.ndarray], subject_id: str, output_dir
     print(f"  Saved persistence diagram to {output_path}")
 
 
-def plot_betti_curves(dgms: List[np.ndarray], subject_id: str, output_dir: Path):
-    """Plot Betti curves for dimensions 1 and 2.
+def plot_betti_curves(dgms: Dict, subject_id: str, output_dir: Path):
+    """Plot Betti curves, creating subplots only for dimensions with features.
     
     Args:
-        dgms: List of persistence diagrams
+        dgms: Dictionary mapping dimension to persistence diagrams
         subject_id: Subject identifier
         output_dir: Directory to save the plot
     """
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    dimension_names = ['H₁ (Loops)', 'H₂ (Voids)']
-    colors = ['red', 'green']
+    # Use seaborn color palette
+    colors = sns.color_palette('tab10', 3)
+    dimension_names = {0: 'H₀ (Components)', 1: 'H₁ (Loops)', 2: 'H₂ (Voids)'}
     
-    for dim_idx, (ax, name, color) in enumerate(zip(axes, dimension_names, colors)):
-        dgm_idx = dim_idx + 1  # Skip H0
-        if dgm_idx >= len(dgms) or len(dgms[dgm_idx]) == 0:
-            ax.text(0.5, 0.5, 'No features', ha='center', va='center', transform=ax.transAxes)
-            ax.set_title(name)
-            continue
-        
-        filt_vals, betti_nums = compute_betti_curve(dgms[dgm_idx])
-        
-        if len(filt_vals) > 0:
-            ax.plot(filt_vals, betti_nums, color=color, linewidth=2)
-            ax.fill_between(filt_vals, betti_nums, alpha=0.3, color=color)
-            ax.set_xlabel('Filtration value', fontsize=10)
-            ax.set_ylabel(f'β_{dim_idx}', fontsize=10)
-            ax.set_title(name, fontsize=11)
-            ax.grid(True, alpha=0.3)
-            ax.set_ylim(bottom=-0.5)
-        else:
-            ax.text(0.5, 0.5, 'No features', ha='center', va='center', transform=ax.transAxes)
-            ax.set_title(name)
+    # Determine which dimensions have features
+    dims_with_features = []
+    for dim in range(3):
+        dgm = dgms.get(dim, np.array([]))
+        if len(dgm) > 0:
+            filt_vals, betti_nums = compute_betti_curve(dgm)
+            if len(filt_vals) > 0:
+                dims_with_features.append(dim)
     
-    plt.suptitle(f'Betti Curves - {subject_id}', fontsize=13, fontweight='bold')
+    if not dims_with_features:
+        print("  No features to plot Betti curves")
+        return
+    
+    # Create subplots based on number of dimensions with features
+    n_plots = len(dims_with_features)
+    fig, axes = plt.subplots(1, n_plots, figsize=(6 * n_plots, 4))
+    
+    # Handle case of single subplot
+    if n_plots == 1:
+        axes = [axes]
+    
+    for ax, dim in zip(axes, dims_with_features):
+        dgm = dgms.get(dim, np.array([]))
+        filt_vals, betti_nums = compute_betti_curve(dgm)
+        
+        # Plot curve
+        ax.plot(filt_vals, betti_nums, color=colors[dim], linewidth=2.5)
+        ax.fill_between(filt_vals, betti_nums, alpha=0.3, color=colors[dim])
+        
+        ax.set_xlabel('Filtration value', fontsize=11)
+        ax.set_ylabel(f'$\\beta_{{{dim}}}$', fontsize=11)
+        ax.set_title(dimension_names[dim], fontsize=12)
+        ax.grid(True, alpha=0.3, linestyle=':')
+        ax.set_ylim(bottom=-0.5)
+        
+        # Add max Betti number annotation
+        max_betti = int(betti_nums.max())
+        if max_betti > 0:
+            ax.text(0.98, 0.98, f'max $\\beta_{{{dim}}}$ = {max_betti}', 
+                   transform=ax.transAxes, ha='right', va='top',
+                   bbox=dict(boxstyle='round', facecolor='white', alpha=0.8),
+                   fontsize=9)
+    
+    plt.suptitle(f'Betti Curves', fontsize=13, y=1.02)
     plt.tight_layout()
     
     output_path = output_dir / f'betti_curves_{subject_id}.png'
@@ -335,65 +368,114 @@ def plot_betti_curves(dgms: List[np.ndarray], subject_id: str, output_dir: Path)
     print(f"  Saved Betti curves to {output_path}")
 
 
-def analyze_single_matrix(matrix: np.ndarray, subject_id: str = '', 
-                          output_dir: Optional[Path] = None) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def analyze_single_matrix(matrix: np.ndarray,
+                          mapping_df: pd.DataFrame,
+                          filtered_mapping: pd.DataFrame,
+                          subject_id: str = '', 
+                          output_dir: Optional[Path] = None,
+                          top_k: int = 5
+                          ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Perform persistence analysis on a single connectivity matrix.
     
     Args:
         matrix: Connectivity matrix
         subject_id: Subject identifier
         output_dir: Directory to save plots (if None, plots are not saved)
+        mapping_df: DataFrame for region mapping (used in preprocessing)
         
     Returns:
         Tuple of (h1_features_df, h2_features_df)
     """
+
+    start_time = time.time()
+
+    # Preprocess matrix
+    preprocessed_matrix = preprocess_matrix(matrix, 
+                                            mapping_df=mapping_df, 
+                                            drop_cerebellum_flag=True, 
+                                            connect_components_flag=True)
+    # Important: preprocessing includes transforming to distance matrix!
+
+    preprocess_time = time.time()
+    print(f"  Time elapsed: {preprocess_time - start_time:.3f}s")
+
     print(f"Analyzing persistence{' for ' + subject_id if subject_id else ''}...")
     
     # Compute persistent homology
-    persistence_result = compute_persistence(matrix, max_dimension=2)
+    persistence_result = compute_persistence(preprocessed_matrix, max_dimension=2)
     
+    persistence_time = time.time()
+    print(f"  Persistence computed in {persistence_time - preprocess_time:.3f}s")
+
     if 'error' in persistence_result:
         print(f"  Error in persistence computation: {persistence_result['error']}")
         return pd.DataFrame(), pd.DataFrame()
     
-    dgms = persistence_result['dgms']
-    cocycles = persistence_result.get('cocycles', [])
+    # Print summary statistics
+    print("\nPersistence Summary:")
+    for dim in [0, 1, 2]:
+        dgm = persistence_result['dgms'].get(dim, np.array([]))
+        print(f"H{dim}: {len(dgm)} features detected")
     
-    # Report statistics
-    print(f"  H0 features: {len(persistence_result['h0_persistence'])}")
-    print(f"  H1 features (loops): {len(persistence_result['h1_persistence'])}")
-    print(f"  H2 features (voids): {len(persistence_result['h2_persistence'])}")
+    # Extract representative cycles for H1
+    h1_dgm = persistence_result['dgms'].get(1, np.array([]))
     
-    if len(persistence_result['h1_persistence']) > 0:
-        h1_finite = persistence_result['h1_persistence'][~np.isinf(persistence_result['h1_persistence'][:, 1])]
-        if len(h1_finite) > 0:
-            avg_lifetime_h1 = np.mean(h1_finite[:, 1] - h1_finite[:, 0])
-            print(f"  Average H1 lifetime: {avg_lifetime_h1:.4f}")
-    
-    if len(persistence_result['h2_persistence']) > 0:
-        h2_finite = persistence_result['h2_persistence'][~np.isinf(persistence_result['h2_persistence'][:, 1])]
-        if len(h2_finite) > 0:
-            avg_lifetime_h2 = np.mean(h2_finite[:, 1] - h2_finite[:, 0])
-            print(f"  Average H2 lifetime: {avg_lifetime_h2:.4f}")
-    
-    # Extract features for H1 (loops) and H2 (voids) with cocycle information
-    h1_cocycles = cocycles[1] if len(cocycles) > 1 else None
-    h2_cocycles = cocycles[2] if len(cocycles) > 2 else None
-    n_points = matrix.shape[0]
-    
-    h1_features = extract_homology_features(persistence_result['h1_persistence'], 1, subject_id, h1_cocycles, n_points)
-    h2_features = extract_homology_features(persistence_result['h2_persistence'], 2, subject_id, h2_cocycles, n_points)
+    cycles = []
+    if len(h1_dgm) > 0:
+        print("\nExtracting Representative Cycles:")
+        cycles = extract_representative_cycles(
+            distance_matrix=preprocessed_matrix,
+            simplex_tree=persistence_result['simplex_tree'],
+            persistence_pairs=persistence_result['persistence_pairs'],
+            top_k=top_k
+        )
+        
+        extraction_time = time.time()
+        print(f"  Cycles extracted in {extraction_time - persistence_time:.3f}s")
+        
+        if cycles:
+            print(f"\nFound {len(cycles)} representative cycles:\n")
+            
+            for i, cycle in enumerate(cycles, 1):
+                print(f" Cycle {i}")
+                print(f"  Persistence: {cycle['lifetime']:.6f}")
+                print(f"  Death/Birth Ratio: {cycle['death_birth_ratio']:.6f}")
+                print(f"  Birth: {cycle['birth']:.6f}")
+                print(f"  Death: {cycle['death']:.6f}")
+                print(f"  Number of nodes: {cycle['num_nodes']}")
+                print(f"  Nodes: {cycle['nodes']}")
+                print(f"  Total cost: {cycle['total_cost']:.6f}")
+                
+                # Map to region labels
+                labels = [filtered_mapping.iloc[n]['ROIname'] if n < len(filtered_mapping) else f"Node_{n}" 
+                         for n in cycle['nodes']]
+                print(f"  Regions: {labels}")
+                print()
+                
+                # Add subject_id to cycle
+                cycle['subject_id'] = subject_id
+        else:
+            print("No cycles could be extracted.")
+    else:
+        print("\nNo H1 loops detected in the persistence diagram.")
     
     # Generate and save plots if output directory is provided
     if output_dir is not None:
-        plot_persistence_diagram(dgms, subject_id, output_dir)
-        plot_betti_curves(dgms, subject_id, output_dir)
+        plot_persistence_diagram(persistence_result['dgms'], subject_id, output_dir)
+        plot_betti_curves(persistence_result['dgms'], subject_id, output_dir)
     
-    return h1_features, h2_features
+    # Convert cycles to DataFrame
+    h1_features_df = pd.DataFrame(cycles) if cycles else pd.DataFrame()
+    h2_features_df = pd.DataFrame()  # Placeholder for H2 features
+    
+    return h1_features_df, h2_features_df
 
-
-def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str, 
-         export_mode: str = 'csv', save_plots: bool = True) -> None:
+def main(connectivity_files: List[str], 
+         mapping_file: str, 
+         output_base_dir: str, 
+         export_mode: str = 'csv', 
+         save_plots: bool = True,
+         top_k: int = 5) -> None:
     """Main function to run persistence analysis on multiple connectivity matrices.
     
     Args:
@@ -407,6 +489,7 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
     print(f"Loading brain region mapping from {mapping_file}...")
     mapping_df = pd.read_csv(mapping_file)
     print(f"  Loaded mapping for {len(mapping_df)} regions")
+    filtered_mapping = mapping_df[mapping_df['Lobe'] != 'Cerebellum'].reset_index(drop=True)
     
     # Create output directory
     output_path = Path(output_base_dir)
@@ -424,7 +507,7 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
     all_h2_features = []
     
     for conn_file in connectivity_files:
-        time_start = time.time()
+        subject_time_start = time.time()
         
         # Extract subject ID from filename
         subject_id = Path(conn_file).stem
@@ -434,16 +517,8 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
         matrix = np.loadtxt(conn_file, delimiter=',')
         print(f"  Matrix shape: {matrix.shape}")
         
-        # Preprocess matrix
-        print(f"Preprocessing matrix...")
-        matrix = drop_cerebellum(matrix, mapping_df)
-        matrix = connect_components(matrix, mapping_df)
-        matrix = normalize(matrix)  # type: ignore
-        print(f"  Preprocessed matrix shape: {matrix.shape}")
-        print(f"  Min value: {matrix.min():.4f}, Max value: {matrix.max():.4f}")
-        
         # Run persistence analysis
-        h1_features, h2_features = analyze_single_matrix(matrix, subject_id, plots_dir)
+        h1_features, h2_features = analyze_single_matrix(matrix, mapping_df, filtered_mapping, subject_id, plots_dir, top_k)
         
         # Collect results
         if not h1_features.empty:
@@ -451,8 +526,8 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
         if not h2_features.empty:
             all_h2_features.append(h2_features)
         
-        time_end = time.time()
-        elapsed = time_end - time_start
+        subject_time_end = time.time()
+        elapsed = subject_time_end - subject_time_start
         print(f"Completed persistence analysis for {subject_id} in {elapsed:.2f} seconds")
         print()
     
@@ -462,6 +537,12 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
     
     if all_h1_features:
         h1_combined = pd.concat(all_h1_features, ignore_index=True)
+        
+        # Reorder columns
+        column_order = ['subject_id', 'persistence_id', 'lifetime', 'death_birth_ratio', 
+                       'birth', 'death', 'num_nodes', 'total_cost', 'nodes', 'edges']
+        h1_combined = h1_combined[column_order]
+        
         print(f"  Total H1 features (loops): {len(h1_combined)}")
         print(f"  Subjects with H1 features: {h1_combined['subject_id'].nunique()}")
         
@@ -541,6 +622,8 @@ Examples:
                         default='csv', help='Export format for results (default: csv)')
     parser.add_argument('--no_plots', action='store_true',
                         help='Skip saving individual plots for each subject')
+    parser.add_argument('--top_k', type=int, default=5,
+                        help='Number of top persistent loops to extract per subject (default: 5)')
     
     args = parser.parse_args()
     
@@ -570,7 +653,8 @@ Examples:
             mapping_file=args.mapping_file,
             output_base_dir=args.output_dir,
             export_mode=args.export_mode,
-            save_plots=not args.no_plots
+            save_plots=not args.no_plots,
+            top_k=args.top_k
         )
     else:
         print(f"No connectivity files found matching pattern '{args.pattern}' in {args.data_dir}")
