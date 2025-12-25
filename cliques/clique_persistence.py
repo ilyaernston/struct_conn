@@ -23,7 +23,7 @@ import time
 
 import numpy as np
 import pandas as pd
-import networkx as nx
+import igraph as ig
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -65,7 +65,7 @@ def compute_persistence(matrix: np.ndarray, max_dimension: int = 2) -> Dict:
     
     try:
         # Create Rips complex from distance matrix
-        rips_complex = gd.RipsComplex( 
+        rips_complex = gd.RipsComplex(  # type: ignore
             distance_matrix=matrix,
             max_edge_length=1.0
         ) 
@@ -102,9 +102,9 @@ def compute_persistence(matrix: np.ndarray, max_dimension: int = 2) -> Dict:
 
 def extract_representative_cycles(
     distance_matrix: np.ndarray,
-    simplex_tree: gd.SimplexTree,
+    simplex_tree: gd.SimplexTree, # type: ignore
     persistence_pairs: List,
-    top_k: int = 5
+    percentile: float = 25.0
 ) -> List[Dict]:
     """
     Extract representative cycles for the most persistent H1 features using Gudhi.
@@ -113,7 +113,8 @@ def extract_representative_cycles(
         distance_matrix: The distance matrix used for persistence computation
         simplex_tree: The Gudhi SimplexTree object
         persistence_pairs: List of (dimension, (birth, death)) tuples
-        top_k: Number of most persistent loops to extract
+        percentile: Percentile threshold for selecting persistent loops (default: 25.0)
+                   Only loops with persistence >= this percentile will be extracted
         
     Returns:
         List of dictionaries containing cycle information
@@ -132,7 +133,13 @@ def extract_representative_cycles(
         key=lambda f: f[2] - f[1],  # death - birth
         reverse=True
     )
-    top_features = h1_features_sorted[:top_k]
+    
+    # Calculate persistence threshold based on percentile
+    persistences = [f[2] - f[1] for f in h1_features_sorted]
+    threshold = np.percentile(persistences, 100 - percentile)
+    
+    # Filter features above threshold
+    top_features = [f for f in h1_features_sorted if (f[2] - f[1]) >= threshold]
     
     results = []
     
@@ -157,10 +164,34 @@ def extract_representative_cycles(
         
         # Build a graph from edges at birth time to find the cycle
         # The cycle is created when a new edge closes a loop
-        G = nx.Graph()
+        G = ig.Graph()
+        
+        # Add all unique vertices first
+        vertices = set()
         for u, v, filt in edges_at_birth:
-            weight = distance_matrix[u, v]
-            G.add_edge(u, v, weight=weight, filtration=filt)
+            vertices.add(u)
+            vertices.add(v)
+        
+        # Map original node IDs to igraph vertex indices (igraph uses 0-based sequential IDs)
+        node_to_idx = {node: idx for idx, node in enumerate(sorted(vertices))}
+        idx_to_node = {idx: node for node, idx in node_to_idx.items()}
+        
+        G.add_vertices(len(vertices))
+        
+        # Add edges with weights
+        edge_list = []
+        weights = []
+        filtrations = []
+        for u, v, filt in edges_at_birth:
+            u_idx = node_to_idx[u]
+            v_idx = node_to_idx[v]
+            edge_list.append((u_idx, v_idx))
+            weights.append(distance_matrix[u, v])
+            filtrations.append(filt)
+        
+        G.add_edges(edge_list)
+        G.es['weight'] = weights
+        G.es['filtration'] = filtrations
         
         # Find the edge that creates the cycle (closest to birth time)
         creator_edge = None
@@ -176,38 +207,50 @@ def extract_representative_cycles(
         
         # Find shortest cycle containing the creator edge
         u, v = creator_edge
+        u_idx = node_to_idx[u]
+        v_idx = node_to_idx[v]
         
         # Temporarily remove the creator edge and find shortest path between u and v
-        G_temp = G.copy()
-        if G_temp.has_edge(u, v):
-            G_temp.remove_edge(u, v)
+        # Find the edge ID for the creator edge
+        edge_id = G.get_eid(u_idx, v_idx, error=False)
+        
+        if edge_id == -1:
+            continue
+        
+        # Delete the edge temporarily
+        G.delete_edges([edge_id])
         
         try:
             # Find shortest path (by weight) between u and v
-            if nx.has_path(G_temp, u, v):
-                path = nx.shortest_path(G_temp, u, v, weight='weight')
-                
-                # Create the cycle by adding the creator edge back
-                cycle_nodes = path
-                cycle_edges = [(cycle_nodes[i], cycle_nodes[i+1]) for i in range(len(cycle_nodes)-1)]
-                cycle_edges.append((cycle_nodes[-1], cycle_nodes[0]))
-                
-                # Calculate total cost
-                total_cost = sum(distance_matrix[u, v] for u, v in cycle_edges)
-                
-                results.append({
-                    'persistence_id': feature_idx,
-                    'lifetime': float(persistence_value),
-                    'death_birth_ratio': float(death / birth) if birth > 0 else float('inf'),
-                    'birth': float(birth),
-                    'death': float(death),
-                    'nodes': cycle_nodes,
-                    'edges': cycle_edges,
-                    'total_cost': float(total_cost),
-                    'num_nodes': len(cycle_nodes)
-                })
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
-            print(f"Could not find path for cycle {feature_idx}")
+            path_indices = G.get_shortest_paths(u_idx, v_idx, weights='weight', output='vpath')
+            
+            if not path_indices or not path_indices[0]:
+                # No path found
+                continue
+            
+            path_indices = path_indices[0]
+            
+            # Convert back to original node IDs
+            cycle_nodes = [idx_to_node[idx] for idx in path_indices]
+            cycle_edges = [(cycle_nodes[i], cycle_nodes[i+1]) for i in range(len(cycle_nodes)-1)]
+            cycle_edges.append((cycle_nodes[-1], cycle_nodes[0]))
+            
+            # Calculate total cost
+            total_cost = sum(distance_matrix[u, v] for u, v in cycle_edges)
+            
+            results.append({
+                'persistence_id': feature_idx,
+                'lifetime': float(persistence_value),
+                'death_birth_ratio': float(death / birth) if birth > 0 else float('inf'),
+                'birth': float(birth),
+                'death': float(death),
+                'nodes': cycle_nodes,
+                'edges': cycle_edges,
+                'total_cost': float(total_cost),
+                'num_nodes': len(cycle_nodes)
+            })
+        except Exception as e:
+            print(f"Could not find path for cycle {feature_idx}: {e}")
             continue
     
     return results
@@ -373,7 +416,7 @@ def analyze_single_matrix(matrix: np.ndarray,
                           filtered_mapping: pd.DataFrame,
                           subject_id: str = '', 
                           output_dir: Optional[Path] = None,
-                          top_k: int = 5
+                          percentile: float = 25.0
                           ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Perform persistence analysis on a single connectivity matrix.
     
@@ -382,6 +425,7 @@ def analyze_single_matrix(matrix: np.ndarray,
         subject_id: Subject identifier
         output_dir: Directory to save plots (if None, plots are not saved)
         mapping_df: DataFrame for region mapping (used in preprocessing)
+        percentile: Percentile threshold for selecting persistent loops (default: 25.0)
         
     Returns:
         Tuple of (h1_features_df, h2_features_df)
@@ -427,7 +471,7 @@ def analyze_single_matrix(matrix: np.ndarray,
             distance_matrix=preprocessed_matrix,
             simplex_tree=persistence_result['simplex_tree'],
             persistence_pairs=persistence_result['persistence_pairs'],
-            top_k=top_k
+            percentile=percentile
         )
         
         extraction_time = time.time()
@@ -475,7 +519,7 @@ def main(connectivity_files: List[str],
          output_base_dir: str, 
          export_mode: str = 'csv', 
          save_plots: bool = True,
-         top_k: int = 5) -> None:
+         percentile: float = 25.0) -> None:
     """Main function to run persistence analysis on multiple connectivity matrices.
     
     Args:
@@ -484,6 +528,7 @@ def main(connectivity_files: List[str],
         output_base_dir: Base directory for output files
         export_mode: Export format ('csv', 'parquet', or 'both')
         save_plots: Whether to save individual plots for each subject
+        percentile: Percentile threshold for selecting persistent loops (default: 25.0)
     """
     # Load brain region mapping
     print(f"Loading brain region mapping from {mapping_file}...")
@@ -518,7 +563,7 @@ def main(connectivity_files: List[str],
         print(f"  Matrix shape: {matrix.shape}")
         
         # Run persistence analysis
-        h1_features, h2_features = analyze_single_matrix(matrix, mapping_df, filtered_mapping, subject_id, plots_dir, top_k)
+        h1_features, h2_features = analyze_single_matrix(matrix, mapping_df, filtered_mapping, subject_id, plots_dir, percentile)
         
         # Collect results
         if not h1_features.empty:
@@ -622,8 +667,8 @@ Examples:
                         default='csv', help='Export format for results (default: csv)')
     parser.add_argument('--no_plots', action='store_true',
                         help='Skip saving individual plots for each subject')
-    parser.add_argument('--top_k', type=int, default=5,
-                        help='Number of top persistent loops to extract per subject (default: 5)')
+    parser.add_argument('--percentile', type=float, default=25.0,
+                        help='Percentile threshold for selecting persistent loops (default: 25.0). Only loops with persistence >= this percentile will be extracted.')
     
     args = parser.parse_args()
     
@@ -654,7 +699,7 @@ Examples:
             output_base_dir=args.output_dir,
             export_mode=args.export_mode,
             save_plots=not args.no_plots,
-            top_k=args.top_k
+            percentile=args.percentile
         )
     else:
         print(f"No connectivity files found matching pattern '{args.pattern}' in {args.data_dir}")

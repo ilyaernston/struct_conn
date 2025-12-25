@@ -201,6 +201,30 @@ def analyze_single_matrix(matrix: np.ndarray, mapping_df: pd.DataFrame,
     # Detect cliques and compute properties
     cliques_df = detect_cliques(matrix, min_size=min_clique_size)
     print(f"  Found {len(cliques_df)} maximal cliques")
+    
+    # Check if any cliques were found
+    if len(cliques_df) == 0:
+        print(f"  WARNING: No cliques of size >= {min_clique_size} found for {subject_id}")
+        print(f"  Skipping this matrix and returning empty DataFrames")
+        
+        # Create empty DataFrame with correct structure for cliques
+        empty_cliques = pd.DataFrame(columns=[
+            'subject_id', 'clique_index', 'nodes', 'clique_size', 'clique_volume',
+            'clique_avg_degree', 'clique_boundary_edges', 'clique_boundary_ratio',
+            'clique_avg_embeddedness', 'yeo7_networks', 'yeo7_primary',
+            'yeo17_networks', 'yeo17_primary', 'gyrus_regions', 'gyrus_primary',
+            'lobes', 'lobe_primary', 'hemispheres'
+        ])
+        
+        # Create empty DataFrame with correct structure for node participation
+        num_nodes = matrix.shape[0]
+        empty_nodes = pd.DataFrame([
+            {'subject_id': subject_id, 'node_id': node, 'n_cliques': 0}
+            for node in range(num_nodes)
+        ])
+        
+        return empty_cliques, empty_nodes
+    
     print(f"  Max clique size: {cliques_df['clique_size'].max()}, minimum clique size: {cliques_df['clique_size'].min()}")
     print(f"  Average clique size: {cliques_df['clique_size'].mean():.4f}")
     print(f"  Average volume: {cliques_df['clique_volume'].mean():.4f}")
