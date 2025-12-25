@@ -1,0 +1,275 @@
+Label,ROIname,Lobe,Gyrus,description,Yeo_7network,Yeo_17network,index,FS_name,Yeo_7network_name,Yeo_17network_name,Hemi,x,y,z
+1,A8m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", medial area 8,6.0,17.0,0,A8m_L,Frontoparietal,Limbic b,L,-5.221795319594833,15.38630806845967,53.94341599720573
+2,A8m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", medial area 8,4.0,8.0,1,A8m_R,Ventral Attention,Salience/VenAttn A,R,6.834693877551018,16.31877551020409,54.22489795918368
+3,A8dl,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", dorsolateral area 8,7.0,16.0,2,A8dl_L,Default,Limbic A,L,-18.230685081361955,23.511828251059768,52.74552167373171
+4,A8dl,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", dorsolateral area 8,6.0,13.0,3,A8dl_R,Frontoparietal,Default A,R,21.635047683923705,25.61120572207085,51.457084468664846
+5,A9l,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", lateral area 9,7.0,17.0,4,A9l_L,Default,Limbic b,L,-10.996868303939335,48.60919729685182,39.7639690126916
+6,A9l,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", lateral area 9,7.0,17.0,5,A9l_R,Default,Limbic b,R,12.83392076695334,48.28098124911884,40.10164951360497
+7,A6dl,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", dorsolateral area 6,3.0,6.0,6,A6dl_L,Dorsal Attention,Dorsal Attention A,L,-18.107786728039898,-0.6816263904871533,65.05044112006138
+8,A6dl,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", dorsolateral area 6,3.0,6.0,7,A6dl_R,Dorsal Attention,Dorsal Attention A,R,20.161576168929116,4.1604449472096405,63.85840874811464
+9,A6m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", medial area 6,2.0,3.0,8,A6m_L,Somatomotor,Somatomotor A,L,-6.298254620123203,-4.986824093086923,57.78405201916496
+10,A6m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", medial area 6,2.0,3.0,9,A6m_R,Somatomotor,Somatomotor A,R,7.35460017196904,-3.8089423903697366,59.76956147893378
+11,A9m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ",medial area 9,7.0,13.0,10,A9m_L,Default,Default A,L,-5.0067698259187665,35.670793036750496,38.09748549323018
+12,A9m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ",medial area 9,6.0,13.0,11,A9m_R,Frontoparietal,Default A,R,5.971444568868975,37.89893617021278,35.10400335946248
+13,A10m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", medial area 10,7.0,16.0,12,A10m_L,Default,Limbic A,L,-7.888284367065651,56.09720710917665,15.21653971708379
+14,A10m,Frontal Lobe ,"SFG, Superior Frontal Gyrus  ", medial area 10,7.0,16.0,13,A10m_R,Default,Limbic A,R,7.719363891487376,58.38767873847388,13.093144460777763
+15,A9/46d,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", dorsal area 9/46,4.0,8.0,14,46d_L,Ventral Attention,Salience/VenAttn A,L,-27.232796987333103,42.67545361177679,30.892502567613832
+16,A9/46d,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", dorsal area 9/46,6.0,11.0,15,46d_R,Frontoparietal,Control B,R,30.208302808302804,37.05689865689865,35.74884004884005
+17,IFJ,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", inferior frontal junction,6.0,12.0,16,IFJ_L,Frontoparietal,Control C,L,-41.58816295157571,13.37217524980784,36.25011529592621
+18,IFJ,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", inferior frontal junction,6.0,12.0,17,IFJ_R,Frontoparietal,Control C,R,41.832334091378954,11.42712425056854,38.574322927434366
+19,A46,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", area 46,6.0,13.0,18,A46_L,Frontoparietal,Default A,L,-27.88333593627987,55.93690457598001,12.233171950648128
+20,A46,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", area 46,6.0,13.0,19,A46_R,Frontoparietal,Default A,R,27.674498286833085,55.024963289280464,16.935511502692123
+21,A9/46v,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", ventral area 9/46 ,6.0,12.0,20,46v_L,Frontoparietal,Control C,L,-40.781879614566385,40.719434363659104,16.112376423476405
+22,A9/46v,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", ventral area 9/46 ,6.0,8.0,21,46v_R,Frontoparietal,Salience/VenAttn A,R,41.76241787122208,44.141655716162944,13.56070959264126
+23,A8vl,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", ventrolateral area 8,7.0,16.0,22,A8vl_L,Default,Limbic A,L,-32.875735106110966,23.18384045001278,45.18243416006136
+24,A8vl,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", ventrolateral area 8,6.0,13.0,23,A8vl_R,Frontoparietal,Default A,R,41.99673456694137,26.637225936868305,39.16031721349712
+25,A6vl,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", ventrolateral area 6,3.0,6.0,24,A6vl_L,Dorsal Attention,Dorsal Attention A,L,-32.200440970134295,3.669673281218678,54.66406093405491
+26,A6vl,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", ventrolateral area 6,3.0,12.0,25,A6vl_R,Dorsal Attention,Control C,R,33.53776497221651,7.810454826095906,54.43136447828772
+27,A10l,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", lateral area10,5.0,10.0,26,A10l_L,Limbic,Control A,L,-25.570642201834858,60.40107033639143,-5.539143730886849
+28,A10l,Frontal Lobe ,"MFG, Middle Frontal Gyrus ", lateral area10,6.0,13.0,27,A10l_R,Frontoparietal,Default A,R,25.48428970035181,61.39160499818027,-3.8142666504913194
+29,A44d,Frontal Lobe ,"IFG, Inferior Frontal Gyrus",dorsal area 44,6.0,12.0,28,A44d_L,Frontoparietal,Control C,L,-45.97027027027027,13.358687258687269,23.707335907335903
+30,A44d,Frontal Lobe ,"IFG, Inferior Frontal Gyrus",dorsal area 44,3.0,12.0,29,A44d_R,Dorsal Attention,Control C,R,45.44240111034003,16.351839000693957,25.12421929215823
+31,IFS,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", inferior frontal sulcus,6.0,12.0,30,IFS_L,Frontoparietal,Control C,L,-47.422853453841185,31.812782440284053,13.624273724983864
+32,IFS,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", inferior frontal sulcus,6.0,12.0,31,IFS_R,Frontoparietal,Control C,R,47.9215003866976,34.93000773395204,13.180587780355763
+33,A45c,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", caudal area 45,7.0,17.0,32,A45c_L,Default,Limbic b,L,-52.62510220768602,23.034341782502057,11.083810302534744
+34,A45c,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", caudal area 45,7.0,17.0,33,A45c_R,Default,Limbic b,R,54.175391797265746,23.758919639879963,11.59253084361454
+35,A45r,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", rostral area 45,7.0,17.0,34,A45r_L,Default,Limbic b,L,-48.753584528176056,36.21573857952651,-2.832944314771595
+36,A45r,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", rostral area 45,6.0,8.0,35,A45r_R,Frontoparietal,Salience/VenAttn A,R,51.085678935972794,36.34178781317661,-0.5459325703680804
+37,A44op,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", opercular area 44,4.0,7.0,36,A44op_L,Ventral Attention,Dorsal Attention B,L,-39.41015824400204,22.604900459418076,3.794282797345588
+38,A44op,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", opercular area 44,4.0,8.0,37,A44op_R,Ventral Attention,Salience/VenAttn A,R,41.94507908611598,21.85874340949033,3.4608963093145917
+39,A44v,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", ventral area 44,4.0,8.0,38,A44v_L,Ventral Attention,Salience/VenAttn A,L,-51.612631578947365,13.41473684210527,6.274105263157892
+40,A44v,Frontal Lobe ,"IFG, Inferior Frontal Gyrus", ventral area 44,4.0,8.0,39,A44v_R,Ventral Attention,Salience/VenAttn A,R,53.589539007092185,13.86258865248226,10.984042553191486
+41,A14m,Frontal Lobe ,"OrG, Orbital Gyrus", medial area 14,7.0,16.0,40,A14m_L,Default,Limbic A,L,-6.741903338315893,53.65296462381664,-6.681365221723965
+42,A14m,Frontal Lobe ,"OrG, Orbital Gyrus", medial area 14,7.0,16.0,41,A14m_R,Default,Limbic A,R,6.371891266628111,47.46732215153267,-6.964719491035282
+43,A12/47o,Frontal Lobe ,"OrG, Orbital Gyrus", orbital area 12/47,7.0,17.0,42,47o_L,Default,Limbic b,L,-36.46165048543689,33.07160194174756,-15.975728155339809
+44,A12/47o,Frontal Lobe ,"OrG, Orbital Gyrus", orbital area 12/47,7.0,17.0,43,47o_R,Default,Limbic b,R,40.407052896725446,38.53299748110831,-14.325440806045345
+45,A11l,Frontal Lobe ,"OrG, Orbital Gyrus", lateral area 11,5.0,10.0,44,A11l_L,Limbic,Control A,L,-22.58444270425477,37.51057165231009,-17.61824588880188
+46,A11l,Frontal Lobe ,"OrG, Orbital Gyrus", lateral area 11,6.0,12.0,45,A11l_R,Frontoparietal,Control C,R,23.486643197349352,36.16193828950094,-18.160695796231103
+47,A11m,Frontal Lobe ,"OrG, Orbital Gyrus", medial area 11,5.0,10.0,46,A11m_L,Limbic,Control A,L,-6.513348277970252,52.32993682494396,-19.255145710209906
+48,A11m,Frontal Lobe ,"OrG, Orbital Gyrus", medial area 11,5.0,10.0,47,A11m_R,Limbic,Control A,R,6.378767123287673,56.713698630136975,-16.428424657534244
+49,A13,Frontal Lobe ,"OrG, Orbital Gyrus", area 13,5.0,10.0,48,A13_L,Limbic,Control A,L,-10.418154353199668,17.5471024443834,-18.76435045317221
+50,A13,Frontal Lobe ,"OrG, Orbital Gyrus", area 13,5.0,10.0,49,A13_R,Limbic,Control A,R,9.103273762454537,20.238968843903223,-19.341926300806577
+51,A12/47l,Frontal Lobe ,"OrG, Orbital Gyrus", lateral area 12/47,7.0,17.0,50,47l_L,Default,Limbic b,L,-40.71024967148489,32.123959702146294,-9.18550153307052
+52,A12/47l,Frontal Lobe ,"OrG, Orbital Gyrus", lateral area 12/47,7.0,17.0,51,47l_R,Default,Limbic b,R,42.42219969589459,31.304612265585405,-8.928788646730865
+53,A4hf,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(head and face region),2.0,4.0,52,A4hf_L,Somatomotor,Somatomotor B,L,-48.972269383135256,-7.636106395019809,38.998160724391624
+54,A4hf,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(head and face region),2.0,4.0,53,A4hf_R,Somatomotor,Somatomotor B,R,54.693016824153034,-2.298686333256512,32.896750403318734
+55,A6cdl,Frontal Lobe ,"PrG, Precentral Gyrus", caudal dorsolateral area 6,3.0,6.0,54,A6cdl_L,Dorsal Attention,Dorsal Attention A,L,-31.58064516129032,-9.121233605104578,57.796880538816026
+56,A6cdl,Frontal Lobe ,"PrG, Precentral Gyrus", caudal dorsolateral area 6,3.0,6.0,55,A6cdl_R,Dorsal Attention,Dorsal Attention A,R,32.94895922440833,-6.768463073852288,56.51867693185059
+57,A4ul,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(upper limb region),2.0,3.0,56,A4ul_L,Somatomotor,Somatomotor A,L,-26.272092559345708,-24.9706762417714,62.59445441851187
+58,A4ul,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(upper limb region),2.0,3.0,57,A4ul_R,Somatomotor,Somatomotor A,R,34.2404229848364,-18.83020750199522,58.49900239425378
+59,A4t,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(trunk region),2.0,3.0,58,A4t_L,Somatomotor,Somatomotor A,L,-13.17054263565892,-20.356589147286822,73.37938896488828
+60,A4t,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(trunk region),2.0,3.0,59,A4t_R,Somatomotor,Somatomotor A,R,15.12553251917069,-21.5444476001136,70.994603805737
+61,A4tl,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(tongue and larynx region),4.0,7.0,60,A4tl_L,Ventral Attention,Dorsal Attention B,L,-52.10110138378989,0.091499576390845,7.670714487432932
+62,A4tl,Frontal Lobe ,"PrG, Precentral Gyrus", area 4(tongue and larynx region),4.0,7.0,61,A4tl_R,Ventral Attention,Dorsal Attention B,R,53.66615760537567,3.854001221747098,8.795357361026262
+63,A6cvl,Frontal Lobe ,"PrG, Precentral Gyrus", caudal ventrolateral area 6,3.0,12.0,62,A6cvl_L,Dorsal Attention,Control C,L,-49.227731092436976,4.719495798319315,30.313277310924363
+64,A6cvl,Frontal Lobe ,"PrG, Precentral Gyrus", caudal ventrolateral area 6,3.0,12.0,63,A6cvl_R,Dorsal Attention,Control C,R,51.22207621550592,7.17101558100245,30.47756711094425
+65,A1/2/3ll,Frontal Lobe ,"PCL, Paracentral Lobule", area1/2/3 (lower limb region),4.0,7.0,64,3ll_L,Ventral Attention,Dorsal Attention B,L,-7.781874569262584,-37.98277050310131,58.08959338387319
+66,A1/2/3ll,Frontal Lobe ,"PCL, Paracentral Lobule", area1/2/3 (lower limb region),2.0,3.0,65,3ll_R,Somatomotor,Somatomotor A,R,9.95551939245999,-34.3287225386493,53.91564957960401
+67,A4ll,Frontal Lobe ,"PCL, Paracentral Lobule", area 4,2.0,3.0,66,A4ll_L,Somatomotor,Somatomotor A,L,-4.315388798259917,-22.82082653616095,60.77786840674278
+68,A4ll,Frontal Lobe ,"PCL, Paracentral Lobule", area 4,2.0,3.0,67,A4ll_R,Somatomotor,Somatomotor A,R,4.627239413680783,-20.991856677524424,61.278908794788265
+69,A38m,Temporal Lobe,"STG, Superior Temporal Gyrus", medial area 38,5.0,9.0,68,A38m_L,Limbic,Salience/VenAttn B,L,-31.841291890953293,13.853099496440365,-34.47473519708283
+70,A38m,Temporal Lobe,"STG, Superior Temporal Gyrus", medial area 38,5.0,9.0,69,A38m_R,Limbic,Salience/VenAttn B,R,31.30749161386508,15.104919865821842,-33.62541930674618
+71,A41/42,Temporal Lobe,"STG, Superior Temporal Gyrus", area 41/42,2.0,4.0,70,42_L,Somatomotor,Somatomotor B,L,-53.834016393442624,-31.74154713114754,12.235399590163937
+72,A41/42,Temporal Lobe,"STG, Superior Temporal Gyrus", area 41/42,2.0,4.0,71,42_R,Somatomotor,Somatomotor B,R,53.952823920265786,-23.605315614617936,10.503654485049836
+73,TE1.0 and TE1.2,Temporal Lobe,"STG, Superior Temporal Gyrus",TE1.0 and TE1.2,2.0,4.0,72,TE1.2_L,Somatomotor,Somatomotor B,L,-49.91007532956686,-10.529504080351543,1.2473320778405537
+74,TE1.0 and TE1.2,Temporal Lobe,"STG, Superior Temporal Gyrus",TE1.0 and TE1.2,2.0,4.0,73,TE1.2_R,Somatomotor,Somatomotor B,R,50.80790071665794,-3.57647264464255,-1.154518440832021
+75,A22c,Temporal Lobe,"STG, Superior Temporal Gyrus", caudal area 22,2.0,14.0,74,A22c_L,Somatomotor,14,L,-62.45635172268019,-33.198689494821394,7.351088564785456
+76,A22c,Temporal Lobe,"STG, Superior Temporal Gyrus", caudal area 22,2.0,4.0,75,A22c_R,Somatomotor,Somatomotor B,R,66.45610328638497,-20.29671361502348,6.354694835680746
+77,A38l,Temporal Lobe,"STG, Superior Temporal Gyrus", lateral area 38,5.0,9.0,76,A38l_L,Limbic,Salience/VenAttn B,L,-44.843313373253494,10.925898203592824,-19.572854291417165
+78,A38l,Temporal Lobe,"STG, Superior Temporal Gyrus", lateral area 38,5.0,9.0,77,A38l_R,Limbic,Salience/VenAttn B,R,46.995150339476226,12.239767216294863,-19.60659553831232
+79,A22r,Temporal Lobe,"STG, Superior Temporal Gyrus", rostral area 22,7.0,14.0,78,A22r_L,Default,14,L,-54.90478938257357,-3.326216580111563,-10.37295633775726
+80,A22r,Temporal Lobe,"STG, Superior Temporal Gyrus", rostral area 22,7.0,17.0,79,A22r_R,Default,Limbic b,R,57.39415156507414,-12.89415156507414,-3.5584843492586486
+81,A21c,Temporal Lobe,"MTG, Middle Temporal Gyrus", caudal area 21,7.0,17.0,80,A21c_L,Default,Limbic b,L,-64.96128444545661,-30.42860396265088,-11.583466180824416
+82,A21c,Temporal Lobe,"MTG, Middle Temporal Gyrus", caudal area 21,6.0,13.0,81,A21c_R,Frontoparietal,Default A,R,64.81490639350054,-28.689685623454608,-13.305898975626988
+83,A21r,Temporal Lobe,"MTG, Middle Temporal Gyrus", rostral area 21,7.0,17.0,82,A21r_L,Default,Limbic b,L,-53.065764631843926,2.1079295154185047,-29.567495280050345
+84,A21r,Temporal Lobe,"MTG, Middle Temporal Gyrus", rostral area 21,7.0,17.0,83,A21r_R,Default,Limbic b,R,51.400889121338906,5.578974895397494,-31.82923640167364
+85,A37dl,Temporal Lobe,"MTG, Middle Temporal Gyrus", dorsolateral area37,3.0,6.0,84,A37dl_L,Dorsal Attention,Dorsal Attention A,L,-59.0838682957134,-57.51563470697867,4.251190722716913
+86,A37dl,Temporal Lobe,"MTG, Middle Temporal Gyrus", dorsolateral area37,3.0,6.0,85,A37dl_R,Dorsal Attention,Dorsal Attention A,R,60.12238185909641,-53.27592175869829,2.705556517223471
+87,aSTS,Temporal Lobe,"MTG, Middle Temporal Gyrus", anterior superior temporal sulcus,7.0,17.0,86,aSTS_L,Default,Limbic b,L,-58.41188927545001,-19.630010588413256,-9.449251247920133
+88,aSTS,Temporal Lobe,"MTG, Middle Temporal Gyrus", anterior superior temporal sulcus,7.0,14.0,87,aSTS_R,Default,14,R,58.26346863468635,-15.782920400632577,-9.957195571955722
+89,A20iv,Temporal Lobe,"ITG, Inferior Temporal Gyrus", intermediate ventral area 20,5.0,9.0,88,A20iv_L,Limbic,Salience/VenAttn B,L,-45.28713692946058,-26.421576763485476,-26.78755186721992
+90,A20iv,Temporal Lobe,"ITG, Inferior Temporal Gyrus", intermediate ventral area 20,5.0,9.0,89,A20iv_R,Limbic,Salience/VenAttn B,R,45.81805929919136,-14.44204851752022,-32.6010781671159
+91,A37elv,Temporal Lobe,"ITG, Inferior Temporal Gyrus", extreme lateroventral area37,3.0,5.0,90,A37elv_L,Dorsal Attention,Temporal Parietal,L,-50.64634146341464,-57.04405979543667,-14.577891424075531
+92,A37elv,Temporal Lobe,"ITG, Inferior Temporal Gyrus", extreme lateroventral area37,3.0,5.0,91,A37elv_R,Dorsal Attention,Temporal Parietal,R,53.29193899782135,-52.418845315904136,-18.164488017429193
+93,A20r,Temporal Lobe,"ITG, Inferior Temporal Gyrus", rostral area 20,5.0,9.0,92,A20r_L,Limbic,Salience/VenAttn B,L,-43.46946564885496,-2.354961832061065,-41.40127226463105
+94,A20r,Temporal Lobe,"ITG, Inferior Temporal Gyrus", rostral area 20,5.0,9.0,93,A20r_R,Limbic,Salience/VenAttn B,R,40.39900176159719,0.3317674691720498,-43.19113329418673
+95,A20il,Temporal Lobe,"ITG, Inferior Temporal Gyrus", intermediate lateral area 20,7.0,17.0,94,A20il_L,Default,Limbic b,L,-55.8218836565097,-15.597506925207751,-27.529085872576175
+96,A20il,Temporal Lobe,"ITG, Inferior Temporal Gyrus", intermediate lateral area 20,5.0,17.0,95,A20il_R,Limbic,Limbic b,R,54.60572562358277,-11.028628117913826,-32.223356009070294
+97,A37vl,Temporal Lobe,"ITG, Inferior Temporal Gyrus", ventrolateral area 37,3.0,12.0,96,A37vl_L,Dorsal Attention,Control C,L,-55.16997334912645,-60.0497482973053,-5.852531832987864
+98,A37vl,Temporal Lobe,"ITG, Inferior Temporal Gyrus", ventrolateral area 37,3.0,5.0,97,A37vl_R,Dorsal Attention,Temporal Parietal,R,54.176318701586126,-57.00848395426043,-8.337882700110661
+99,A20cl,Temporal Lobe,"ITG, Inferior Temporal Gyrus", caudolateral of area 20,6.0,13.0,98,A20cl_L,Frontoparietal,Default A,L,-59.19125408394069,-41.77155064086453,-15.998240764011058
+100,A20cl,Temporal Lobe,"ITG, Inferior Temporal Gyrus", caudolateral of area 20,6.0,13.0,99,A20cl_R,Frontoparietal,Default A,R,60.65929059550928,-39.91636836967133,-17.182232346241456
+101,A20cv,Temporal Lobe,"ITG, Inferior Temporal Gyrus", caudoventral of area 20,5.0,9.0,100,A20cv_L,Limbic,Salience/VenAttn B,L,-54.75143234905244,-30.65755839576906,-27.01498457470251
+102,A20cv,Temporal Lobe,"ITG, Inferior Temporal Gyrus", caudoventral of area 20,5.0,9.0,101,A20cv_R,Limbic,Salience/VenAttn B,R,53.777504472271914,-31.25245974955277,-25.70460644007156
+103,A20rv,Temporal Lobe,"FuG, Fusiform Gyrus", rostroventral area 20,5.0,9.0,102,A20rv_L,Limbic,Salience/VenAttn B,L,-32.71070029382958,-16.45996571988246,-32.14703721841332
+104,A20rv,Temporal Lobe,"FuG, Fusiform Gyrus", rostroventral area 20,5.0,9.0,103,A20rv_R,Limbic,Salience/VenAttn B,R,33.469818682579756,-14.817879274730316,-33.58824879504246
+105,A37mv,Temporal Lobe,"FuG, Fusiform Gyrus", medioventral area37,1.0,1.0,104,A37mv_L,Visual,Visual A,L,-30.79871040089711,-64.55018222596019,-14.274740678441267
+106,A37mv,Temporal Lobe,"FuG, Fusiform Gyrus", medioventral area37,1.0,1.0,105,A37mv_R,Visual,Visual A,R,31.11946973326944,-61.77703242293563,-13.69238140872065
+107,A37lv,Temporal Lobe,"FuG, Fusiform Gyrus", lateroventral area37,3.0,5.0,106,A37lv_L,Dorsal Attention,Temporal Parietal,L,-42.0442075152776,-50.64048888311012,-17.27525679365492
+108,A37lv,Temporal Lobe,"FuG, Fusiform Gyrus", lateroventral area37,1.0,5.0,107,A37lv_R,Visual,Temporal Parietal,R,42.567606238374594,-49.22864501359278,-18.63857490341966
+109,A35/36r,Temporal Lobe,"PhG, Parahippocampal Gyrus", rostral area 35/36,5.0,9.0,108,36r_L,Limbic,Salience/VenAttn B,L,-27.051724137931032,-7.013493253373312,-34.13268365817091
+110,A35/36r,Temporal Lobe,"PhG, Parahippocampal Gyrus", rostral area 35/36,5.0,9.0,109,36r_R,Limbic,Salience/VenAttn B,R,27.57235621521336,-8.332096474953616,-33.5139146567718
+111,A35/36c,Temporal Lobe,"PhG, Parahippocampal Gyrus", caudal area 35/36,5.0,15.0,110,36c_L,Limbic,Default C,L,-25.068181818181813,-25.120129870129873,-25.983766233766232
+112,A35/36c,Temporal Lobe,"PhG, Parahippocampal Gyrus", caudal area 35/36,1.0,15.0,111,36c_R,Visual,Default C,R,26.424242424242426,-23.303030303030297,-26.78492239467849
+113,TL,Temporal Lobe,"PhG, Parahippocampal Gyrus", area TL (lateral PPHC,1.0,15.0,112,TL_L,Visual,Default C,L,-28.36124031007752,-31.77209302325582,-17.68062015503876
+114,TL,Temporal Lobe,"PhG, Parahippocampal Gyrus", area TL (lateral PPHC,1.0,15.0,113,TL_R,Visual,Default C,R,29.513027852650495,-30.03593890386344,-17.85265049415993
+115,A28/34,Temporal Lobe,"PhG, Parahippocampal Gyrus", area 28/34 (EC,5.0,9.0,114,34_L,Limbic,Salience/VenAttn B,L,-18.5973597359736,-11.836303630363034,-29.892409240924096
+116,A28/34,Temporal Lobe,"PhG, Parahippocampal Gyrus", area 28/34 (EC,5.0,9.0,115,34_R,Limbic,Salience/VenAttn B,R,18.720519962859797,-10.140204271123494,-29.617455896007428
+117,TI,Temporal Lobe,"PhG, Parahippocampal Gyrus", area TI(temporal agranular insular cortex),5.0,9.0,116,TI_L,Limbic,Salience/VenAttn B,L,-23.23694267515924,1.9159235668789876,-31.76433121019108
+118,TI,Temporal Lobe,"PhG, Parahippocampal Gyrus", area TI(temporal agranular insular cortex),5.0,9.0,117,TI_R,Limbic,Salience/VenAttn B,R,21.582089552238813,1.0456540825285288,-35.93766461808604
+119,TH,Temporal Lobe,"PhG, Parahippocampal Gyrus", area TH (medial PPHC),1.0,2.0,118,TH_L,Visual,Visual B,L,-16.58595194085028,-39.38077634011091,-9.987985212569312
+120,TH,Temporal Lobe,"PhG, Parahippocampal Gyrus", area TH (medial PPHC),1.0,2.0,119,TH_R,Visual,Visual B,R,18.79983726606997,-36.299430431244915,-11.313262815296987
+121,rpSTS,Temporal Lobe,"pSTS, posterior Superior Temporal Sulcus ", rostroposterior superior temporal sulcus,7.0,14.0,120,rpSTS_L,Default,14,L,-54.257784214337434,-39.96994931209268,4.2997827661115195
+122,rpSTS,Temporal Lobe,"pSTS, posterior Superior Temporal Sulcus ", rostroposterior superior temporal sulcus,7.0,14.0,121,rpSTS_R,Default,14,R,52.65945165945166,-36.7041847041847,3.316378066378064
+123,cpSTS,Temporal Lobe,"pSTS, posterior Superior Temporal Sulcus ", caudoposterior superior temporal sulcus,4.0,14.0,122,cpSTS_L,Ventral Attention,14,L,-52.38132573057734,-50.295794725588024,10.71810406272273
+124,cpSTS,Temporal Lobe,"pSTS, posterior Superior Temporal Sulcus ", caudoposterior superior temporal sulcus,4.0,14.0,123,cpSTS_R,Ventral Attention,14,R,56.7414847161572,-40.07772925764192,12.348471615720529
+125,A7r,Parietal Lobe,"SPL, Superior Parietal Lobule", rostral area 7,3.0,6.0,124,A7r_L,Dorsal Attention,Dorsal Attention A,L,-16.307012002526847,-59.89008212255211,62.69330385344284
+126,A7r,Parietal Lobe,"SPL, Superior Parietal Lobule", rostral area 7,3.0,6.0,125,A7r_R,Dorsal Attention,Dorsal Attention A,R,19.35532994923858,-56.89109367789571,64.88601753576373
+127,A7c,Parietal Lobe,"SPL, Superior Parietal Lobule", caudal area 7,3.0,5.0,126,A7c_L,Dorsal Attention,Temporal Parietal,L,-15.499208443271767,-70.85435356200529,51.66939313984169
+128,A7c,Parietal Lobe,"SPL, Superior Parietal Lobule", caudal area 7,3.0,5.0,127,A7c_R,Dorsal Attention,Temporal Parietal,R,18.585312117503065,-68.89106487148103,53.64993880048959
+129,A5l,Parietal Lobe,"SPL, Superior Parietal Lobule", lateral area 5,3.0,6.0,128,A5l_L,Dorsal Attention,Dorsal Attention A,L,-33.35211982736735,-46.73800456968773,49.7027164254887
+130,A5l,Parietal Lobe,"SPL, Superior Parietal Lobule", lateral area 5,3.0,6.0,129,A5l_R,Dorsal Attention,Dorsal Attention A,R,35.18287692791942,-42.039345294302805,54.099464903997486
+131,A7pc,Parietal Lobe,"SPL, Superior Parietal Lobule", postcentral area 7,2.0,3.0,130,A7pc_L,Somatomotor,Somatomotor A,L,-22.46810165975104,-47.39419087136929,65.05653526970954
+132,A7pc,Parietal Lobe,"SPL, Superior Parietal Lobule", postcentral area 7,2.0,3.0,131,A7pc_R,Somatomotor,Somatomotor A,R,23.041390289201377,-43.33642876094454,66.9859379145662
+133,A7ip,Parietal Lobe,"SPL, Superior Parietal Lobule", intraparietal area 7(hIP3),3.0,5.0,132,A7ip_L,Dorsal Attention,Temporal Parietal,L,-27.40080346106304,-58.68726823238566,53.80098887515451
+134,A7ip,Parietal Lobe,"SPL, Superior Parietal Lobule", intraparietal area 7(hIP3),3.0,5.0,133,A7ip_R,Dorsal Attention,Temporal Parietal,R,31.004065040650403,-54.13333333333334,53.30460704607046
+135,A39c,Parietal Lobe,"IPL, Inferior Parietal Lobule", caudal area 39(PGp),1.0,5.0,134,A39c_L,Visual,Temporal Parietal,L,-34.08908872901679,-80.4242206235012,28.720863309352524
+136,A39c,Parietal Lobe,"IPL, Inferior Parietal Lobule", caudal area 39(PGp),1.0,5.0,135,A39c_R,Visual,Temporal Parietal,R,45.37570918260138,-71.2657070813196,20.308152973313724
+137,A39rd,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostrodorsal area 39(Hip3),6.0,12.0,136,A39rd_L,Frontoparietal,Control C,L,-37.62728508838193,-61.31077201994259,46.41350657198973
+138,A39rd,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostrodorsal area 39(Hip3),6.0,12.0,137,A39rd_R,Frontoparietal,Control C,R,39.436232071327055,-65.0098203902313,43.67644398501098
+139,A40rd,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostrodorsal area 40(PFt),3.0,6.0,138,A40rd_L,Dorsal Attention,Dorsal Attention A,L,-51.21378633631792,-33.43051637434074,41.583466208757514
+140,A40rd,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostrodorsal area 40(PFt),3.0,6.0,139,A40rd_R,Dorsal Attention,Dorsal Attention A,R,47.45356678102448,-34.819354075476156,45.08896249852124
+141,A40c,Parietal Lobe,"IPL, Inferior Parietal Lobule", caudal area 40(PFm),7.0,17.0,140,A40c_L,Default,Limbic b,L,-55.65547091412743,-49.3996999076639,37.605955678670355
+142,A40c,Parietal Lobe,"IPL, Inferior Parietal Lobule", caudal area 40(PFm),6.0,13.0,141,A40c_R,Frontoparietal,Default A,R,57.45696567946115,-43.58505292419545,38.15834491606971
+143,A39rv,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostroventral area 39(PGa),3.0,14.0,142,A39rv_L,Dorsal Attention,14,L,-46.661686318849945,-64.91939912776611,25.90704248102084
+144,A39rv,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostroventral area 39(PGa),7.0,16.0,143,A39rv_R,Default,Limbic A,R,52.98820556023588,-54.3338949733221,24.726013292146405
+145,A40rv,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostroventral area 40(PFop),2.0,4.0,144,A40rv_L,Somatomotor,Somatomotor B,L,-53.49492205951819,-31.202290977798768,22.626239962210676
+146,A40rv,Parietal Lobe,"IPL, Inferior Parietal Lobule", rostroventral area 40(PFop),2.0,4.0,145,A40rv_R,Somatomotor,Somatomotor B,R,55.002305533279866,-26.245689655172413,25.552726543704892
+147,A7m,Parietal Lobe,"Pcun, Precuneus", medial area 7(PEp),6.0,11.0,146,A7m_L,Frontoparietal,Control B,L,-5.40434304562946,-63.16877405167674,51.09758108851017
+148,A7m,Parietal Lobe,"Pcun, Precuneus", medial area 7(PEp),6.0,11.0,147,A7m_R,Frontoparietal,Control B,R,6.2575026795284,-64.7674169346195,50.94774919614147
+149,A5m,Parietal Lobe,"Pcun, Precuneus", medial area 5(PEm),2.0,3.0,148,A5m_L,Somatomotor,Somatomotor A,L,-8.244295302013427,-47.18724832214765,57.23176733780761
+150,A5m,Parietal Lobe,"Pcun, Precuneus", medial area 5(PEm),3.0,6.0,149,A5m_R,Dorsal Attention,Dorsal Attention A,R,7.421943335234829,-46.988971287316986,58.44913481650505
+151,dmPOS,Parietal Lobe,"Pcun, Precuneus", dorsomedial parietooccipital  sulcus(PEr) ,1.0,2.0,150,dmPOS_L,Visual,Visual B,L,-11.938126854075437,-66.5492301172482,25.322361915524795
+152,dmPOS,Parietal Lobe,"Pcun, Precuneus", dorsomedial parietooccipital  sulcus(PEr) ,1.0,2.0,151,dmPOS_R,Visual,Visual B,R,16.288953488372087,-63.63186046511627,24.627558139534884
+153,A31,Parietal Lobe,"Pcun, Precuneus", area 31 (Lc1),7.0,16.0,152,A31_L,Default,Limbic A,L,-6.453424429261787,-54.35944009331779,33.77203799366772
+154,A31,Parietal Lobe,"Pcun, Precuneus", area 31 (Lc1),7.0,16.0,153,A31_R,Default,Limbic A,R,6.317043618739902,-54.14472267097469,34.52504038772213
+155,A1/2/3ulhf,Parietal Lobe,"PoG, Postcentral Gyrus", area 1/2/3(upper limb,2.0,4.0,154,3ulhf_L,Somatomotor,Somatomotor B,L,-49.95417459885776,-16.348109872178412,42.97933097633941
+156,A1/2/3ulhf,Parietal Lobe,"PoG, Postcentral Gyrus", area 1/2/3(upper limb,2.0,4.0,155,3ulhf_R,Somatomotor,Somatomotor B,R,49.99618736383442,-14.382489106753807,44.03472222222223
+157,A1/2/3tonIa,Parietal Lobe,"PoG, Postcentral Gyrus", area 1/2/3(tongue and larynx region),2.0,4.0,156,3tonIa_L,Somatomotor,Somatomotor B,L,-55.93901219756049,-14.100179964007197,16.297340531893624
+158,A1/2/3tonIa,Parietal Lobe,"PoG, Postcentral Gyrus", area 1/2/3(tongue and larynx region),2.0,4.0,157,3tonIa_R,Somatomotor,Somatomotor B,R,55.8475957620212,-10.1020782396088,14.990016299918494
+159,A2,Parietal Lobe,"PoG, Postcentral Gyrus", area 2,3.0,6.0,158,A2_L,Dorsal Attention,Dorsal Attention A,L,-45.75459712470746,-29.951688398528916,50.136409227683046
+160,A2,Parietal Lobe,"PoG, Postcentral Gyrus", area 2,2.0,3.0,159,A2_R,Somatomotor,Somatomotor A,R,47.88570459555706,-24.205358656944213,48.11497371544853
+161,A1/2/3tru,Parietal Lobe,"PoG, Postcentral Gyrus", area1/2/3(trunk region),2.0,3.0,160,3tru_L,Somatomotor,Somatomotor A,L,-21.30673925286277,-34.68349915524685,68.3029847944434
+162,A1/2/3tru,Parietal Lobe,"PoG, Postcentral Gyrus", area1/2/3(trunk region),2.0,3.0,161,3tru_R,Somatomotor,Somatomotor A,R,20.027086383601755,-32.60932162030258,69.40043923865301
+163,G,Insular Lobe,"INS, Insular Gyrus", hypergranular insula,2.0,4.0,162,G_L,Somatomotor,Somatomotor B,L,-36.2840437570728,-20.213127121840813,9.651452282157678
+164,G,Insular Lobe,"INS, Insular Gyrus", hypergranular insula,2.0,4.0,163,G_R,Somatomotor,Somatomotor B,R,37.387230133210835,-17.774919614147905,8.092788240698212
+165,vIa,Insular Lobe,"INS, Insular Gyrus", ventral agranular insula,0.0,0.0,164,vIa_L,Subcortical,Subcortical,L,-32.17036235803137,13.982152514872894,-13.054083288263923
+166,vIa,Insular Lobe,"INS, Insular Gyrus", ventral agranular insula,6.0,8.0,165,vIa_R,Frontoparietal,Salience/VenAttn A,R,33.10680751173709,14.273474178403744,-12.991197183098592
+167,dIa,Insular Lobe,"INS, Insular Gyrus", dorsal agranular insula,4.0,8.0,166,dIa_L,Ventral Attention,Salience/VenAttn A,L,-34.28979196903725,17.603289791969047,1.19545234639574
+168,dIa,Insular Lobe,"INS, Insular Gyrus", dorsal agranular insula,4.0,8.0,167,dIa_R,Ventral Attention,Salience/VenAttn A,R,36.454298150163226,18.43362350380849,0.6789989118607167
+169,vId/vIg,Insular Lobe,"INS, Insular Gyrus", ventral dysgranular and granular insula,4.0,7.0,168,vIg_L,Ventral Attention,Dorsal Attention B,L,-38.47961075069509,-3.9694161260426313,-9.307692307692308
+170,vId/vIg,Insular Lobe,"INS, Insular Gyrus", ventral dysgranular and granular insula,4.0,7.0,169,vIg_R,Ventral Attention,Dorsal Attention B,R,39.17452622300573,-2.0969590127809568,-9.079770824151607
+171,dIg,Insular Lobe,"INS, Insular Gyrus", dorsal granular insula,2.0,4.0,170,dIg_L,Somatomotor,Somatomotor B,L,-38.4755728491137,-7.934284479031561,8.137483787289241
+172,dIg,Insular Lobe,"INS, Insular Gyrus", dorsal granular insula,2.0,4.0,171,dIg_R,Somatomotor,Somatomotor B,R,39.12211221122112,-6.876473361621876,7.617161716171623
+173,dId,Insular Lobe,"INS, Insular Gyrus", dorsal dysgranular insula,4.0,7.0,172,dId_L,Ventral Attention,Dorsal Attention B,L,-37.813292223364165,4.931483384720792,4.5303186022610475
+174,dId,Insular Lobe,"INS, Insular Gyrus", dorsal dysgranular insula,4.0,7.0,173,dId_R,Ventral Attention,Dorsal Attention B,R,38.18322203672787,5.454924874791317,4.705759599332225
+175,A23d,Limbic Lobe,"CG, Cingulate Gyrus", dorsal area 23,7.0,16.0,174,A23d_L,Default,Limbic A,L,-4.265312499999993,-39.5721875,31.118125000000006
+176,A23d,Limbic Lobe,"CG, Cingulate Gyrus", dorsal area 23,7.0,16.0,175,A23d_R,Default,Limbic A,R,4.487990626830694,-37.02021089630931,31.610720562390156
+177,A24rv,Limbic Lobe,"CG, Cingulate Gyrus", rostroventral area 24,0.0,0.0,176,A24rv_L,Subcortical,Subcortical,L,-3.343338213762806,8.339677891654475,25.33894582723279
+178,A24rv,Limbic Lobe,"CG, Cingulate Gyrus", rostroventral area 24,0.0,0.0,177,A24rv_R,Subcortical,Subcortical,R,4.522098306484921,21.818669971086337,12.03882693102024
+179,A32p,Limbic Lobe,"CG, Cingulate Gyrus", pregenual area 32,7.0,16.0,178,A32p_L,Default,Limbic A,L,-5.9849890829694345,33.94159388646287,20.662117903930124
+180,A32p,Limbic Lobe,"CG, Cingulate Gyrus", pregenual area 32,4.0,8.0,179,A32p_R,Ventral Attention,Salience/VenAttn A,R,5.029615004935835,27.681803224744986,27.350773280684436
+181,A23v,Limbic Lobe,"CG, Cingulate Gyrus", ventral area 23,7.0,15.0,180,A23v_L,Default,Default C,L,-8.34590973201692,-47.22390691114245,9.562764456981668
+182,A23v,Limbic Lobe,"CG, Cingulate Gyrus", ventral area 23,1.0,15.0,181,A23v_R,Visual,Default C,R,8.570995834911017,-44.07269973494888,10.983718288527072
+183,A24cd,Limbic Lobe,"CG, Cingulate Gyrus", caudodorsal area 24,4.0,7.0,182,A24cd_L,Ventral Attention,Dorsal Attention B,L,-5.146828504306967,7.177760375880979,37.17893500391543
+184,A24cd,Limbic Lobe,"CG, Cingulate Gyrus", caudodorsal area 24,4.0,7.0,183,A24cd_R,Ventral Attention,Dorsal Attention B,R,4.144475920679881,6.163833805476855,38.14542020774316
+185,A23c,Limbic Lobe,"CG, Cingulate Gyrus", caudal area 23,4.0,8.0,184,A23c_L,Ventral Attention,Salience/VenAttn A,L,-7.710456357997344,-22.8471422241914,40.99180327868852
+186,A23c,Limbic Lobe,"CG, Cingulate Gyrus", caudal area 23,4.0,7.0,185,A23c_R,Ventral Attention,Dorsal Attention B,R,6.264969029593942,-19.880935994494152,40.43633860977289
+187,A32sg,Limbic Lobe,"CG, Cingulate Gyrus", subgenual area 32,7.0,16.0,186,A32sg_L,Default,Limbic A,L,-4.796133962688245,38.960440548437845,-1.7774780849629082
+188,A32sg,Limbic Lobe,"CG, Cingulate Gyrus", subgenual area 32,7.0,16.0,187,A32sg_R,Default,Limbic A,R,5.377014925373132,40.8334328358209,6.419104477611938
+189,cLinG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", caudal lingual gyrus,1.0,1.0,188,cLinG_L,Visual,Visual A,L,-11.05727798213347,-82.13767735155018,-10.841040462427747
+190,cLinG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", caudal lingual gyrus,1.0,1.0,189,cLinG_R,Visual,Visual A,R,10.44754810676598,-85.48706807366025,-8.554107179805506
+191,rCunG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", rostral cuneus gyrus,1.0,2.0,190,rCunG_L,Visual,Visual B,L,-5.922155688622752,-80.35965568862275,9.427582335329348
+192,rCunG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", rostral cuneus gyrus,1.0,2.0,191,rCunG_R,Visual,Visual B,R,7.08987770738176,-75.59451893325476,11.113746869014292
+193,cCunG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", caudal cuneus gyrus,1.0,1.0,192,cCunG_L,Visual,Visual A,L,-6.111413660086228,-94.35942818243704,0.7878375312003669
+194,cCunG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", caudal cuneus gyrus,1.0,1.0,193,cCunG_R,Visual,Visual A,R,8.424876847290633,-89.61884236453201,12.395525451559934
+195,rLinG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", rostral lingual gyrus,1.0,2.0,194,rLinG_L,Visual,Visual B,L,-16.517116524028964,-60.45934825543121,-6.373765635286375
+196,rLinG,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex", rostral lingual gyrus,1.0,1.0,195,rLinG_R,Visual,Visual A,R,18.241725175526582,-59.70282275397622,-6.888809284997848
+197,vmPOS,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex",ventromedial parietooccipital sulcus,1.0,2.0,196,vmPOS_L,Visual,Visual B,L,-12.965085982282446,-68.22394476289733,12.112688900468996
+198,vmPOS,Occipital Lobe,"MVOcC, MedioVentral Occipital Cortex",ventromedial parietooccipital sulcus,1.0,2.0,197,vmPOS_R,Visual,Visual B,R,14.64032869785082,-63.43843236409608,12.173451327433623
+199,mOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", middle occipital gyrus,1.0,1.0,198,mOccG_L,Visual,Visual A,L,-30.623244327828367,-89.14940577249575,10.926840561815098
+200,mOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", middle occipital gyrus,1.0,1.0,199,mOccG_R,Visual,Visual A,R,34.37877671333824,-85.90007369196758,10.755784819454677
+201,V5/MT+,Occipital Lobe,"LOcC, lateral Occipital Cortex", area V5/MT+,3.0,5.0,200,MT+_L,Dorsal Attention,Temporal Parietal,L,-45.68895492818227,-73.71702162786858,2.9554234769687895
+202,V5/MT+,Occipital Lobe,"LOcC, lateral Occipital Cortex", area V5/MT+,1.0,5.0,201,MT+_R,Visual,Temporal Parietal,R,47.81288627935723,-70.05855995055624,-0.6951483312731739
+203,OPC,Occipital Lobe,"LOcC, lateral Occipital Cortex", occipital polar cortex,1.0,1.0,202,OPC_L,Visual,Visual A,L,-17.644862155388466,-99.456015037594,2.36215538847118
+204,OPC,Occipital Lobe,"LOcC, lateral Occipital Cortex", occipital polar cortex,1.0,1.0,203,OPC_R,Visual,Visual A,R,21.81652293463317,-97.28958880139984,4.2992125984252
+205,iOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", inferior occipital gyrus,1.0,1.0,204,iOccG_L,Visual,Visual A,L,-30.202967868530784,-87.65624233505028,-12.263796909492273
+206,iOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", inferior occipital gyrus,1.0,1.0,205,iOccG_R,Visual,Visual A,R,32.111306464701116,-84.60021639166892,-11.552745469299431
+207,msOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", medial superior occipital gyrus,1.0,2.0,206,msOccG_L,Visual,Visual B,L,-10.786147729650551,-87.95563925507429,30.576061937643857
+208,msOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", medial superior occipital gyrus,1.0,2.0,207,msOccG_R,Visual,Visual B,R,16.30992132028402,-85.1306850892343,34.299558625983494
+209,lsOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", lateral superior occipital gyrus,1.0,1.0,208,lsOccG_L,Visual,Visual A,L,-22.17450365726228,-77.26750261233019,35.84451410658308
+210,lsOccG,Occipital Lobe,"LOcC, lateral Occipital Cortex", lateral superior occipital gyrus,1.0,5.0,209,lsOccG_R,Visual,Temporal Parietal,R,28.657632653061228,-74.52016326530612,36.08440816326531
+211,mAmyg,Subcortical Nuclei,"Amyg, Amygdala", medial amygdala,0.0,0.0,210,,Subcortical,Subcortical,L,-18.77887788778878,-2.2244224422442187,-19.932343234323433
+212,mAmyg,Subcortical Nuclei,"Amyg, Amygdala", medial amygdala,0.0,0.0,211,,Subcortical,Subcortical,R,19.2856276531231,-2.497877501516072,-19.462704669496667
+213,lAmyg,Subcortical Nuclei,"Amyg, Amygdala", lateral amygdala,0.0,0.0,212,,Subcortical,Subcortical,L,-27.184568835098332,-3.8940998487140632,-19.99848714069591
+214,lAmyg,Subcortical Nuclei,"Amyg, Amygdala", lateral amygdala,0.0,0.0,213,,Subcortical,Subcortical,R,27.808447937131632,-3.258349705304525,-19.87426326129666
+215,rHipp,Subcortical Nuclei,"Hipp, Hippocampus", rostral hippocampus,0.0,0.0,214,,Subcortical,Subcortical,L,-22.08537886872999,-13.698612593383132,-18.869583778014945
+216,rHipp,Subcortical Nuclei,"Hipp, Hippocampus", rostral hippocampus,0.0,0.0,215,,Subcortical,Subcortical,R,21.69504846738276,-12.179460309143307,-20.33167408959916
+217,cHipp,Subcortical Nuclei,"Hipp, Hippocampus", caudal hippocampus,0.0,0.0,216,,Subcortical,Subcortical,L,-27.734549356223177,-30.05321888412017,-10.005793991416311
+218,cHipp,Subcortical Nuclei,"Hipp, Hippocampus", caudal hippocampus,0.0,0.0,217,,Subcortical,Subcortical,R,29.21651560926486,-27.144410876132937,-10.363141993957704
+219,vCa,Subcortical Nuclei,"BG, Basal Ganglia", ventral caudate,0.0,0.0,218,,Subcortical,Subcortical,L,-12.022465753424656,14.42794520547946,-0.2142465753424716
+220,vCa,Subcortical Nuclei,"BG, Basal Ganglia", ventral caudate,0.0,0.0,219,,Subcortical,Subcortical,R,14.533534287867369,14.410324039186122,-2.383948756593824
+221,GP,Subcortical Nuclei,"BG, Basal Ganglia", globus pallidus,0.0,0.0,220,,Subcortical,Subcortical,L,-21.642600717989623,-1.761866773035507,3.5907459114479394
+222,GP,Subcortical Nuclei,"BG, Basal Ganglia", globus pallidus,0.0,0.0,221,,Subcortical,Subcortical,R,21.85975847292559,-1.8507985975847276,3.3918971562134743
+223,NAC,Subcortical Nuclei,"BG, Basal Ganglia", nucleus accumbens,0.0,0.0,222,,Subcortical,Subcortical,L,-16.897740329375722,3.4297204136346124,-9.290693220988125
+224,NAC,Subcortical Nuclei,"BG, Basal Ganglia", nucleus accumbens,0.0,0.0,223,,Subcortical,Subcortical,R,12.3255895811334,10.472720872932058,-8.662090813093982
+225,vmPu,Subcortical Nuclei,"BG, Basal Ganglia", ventromedial putamen,0.0,0.0,224,,Subcortical,Subcortical,L,-22.72632363907532,6.514168530947046,-3.6413124533929846
+226,vmPu,Subcortical Nuclei,"BG, Basal Ganglia", ventromedial putamen,0.0,0.0,225,,Subcortical,Subcortical,R,21.78331584470095,8.27334732423924,-1.331584470094441
+227,dCa,Subcortical Nuclei,"BG, Basal Ganglia", dorsal caudate,0.0,0.0,226,,Subcortical,Subcortical,L,-14.474297953355546,2.0016658733936197,16.4738219895288
+228,dCa,Subcortical Nuclei,"BG, Basal Ganglia", dorsal caudate,0.0,0.0,227,,Subcortical,Subcortical,R,13.92796533670338,5.4601913702834395,14.3979057591623
+229,dlPu,Subcortical Nuclei,"BG, Basal Ganglia", dorsolateral putamen,0.0,0.0,228,,Subcortical,Subcortical,L,-28.304906542056074,-5.268983644859816,1.5403037383177605
+230,dlPu,Subcortical Nuclei,"BG, Basal Ganglia", dorsolateral putamen,0.0,0.0,229,,Subcortical,Subcortical,R,29.13309151785714,-3.3816964285714306,1.4681919642857082
+231,mPFtha,Subcortical Nuclei,"Tha, Thalamus", medial pre-frontal thalamus,0.0,0.0,230,,Subcortical,Subcortical,L,-6.5330073349633295,-12.045843520782398,5.221882640586799
+232,mPFtha,Subcortical Nuclei,"Tha, Thalamus", medial pre-frontal thalamus,0.0,0.0,231,,Subcortical,Subcortical,R,7.232734806629836,-10.884668508287293,5.837016574585633
+233,mPMtha,Subcortical Nuclei,"Tha, Thalamus", pre-motor thalamus,0.0,0.0,232,,Subcortical,Subcortical,L,-18.39681050656661,-13.141651031894938,3.295497185741084
+234,mPMtha,Subcortical Nuclei,"Tha, Thalamus", pre-motor thalamus,0.0,0.0,233,,Subcortical,Subcortical,R,12.442663378545006,-13.628236744759562,0.9192355117139356
+235,Stha,Subcortical Nuclei,"Tha, Thalamus", sensory thalamus,0.0,0.0,234,,Subcortical,Subcortical,L,-17.59582542694497,-22.708728652751415,3.548387096774192
+236,Stha,Subcortical Nuclei,"Tha, Thalamus", sensory thalamus,0.0,0.0,235,,Subcortical,Subcortical,R,17.724137931034477,-21.61990595611286,3.092476489028215
+237,rTtha,Subcortical Nuclei,"Tha, Thalamus", rostral temporal thalamus,0.0,0.0,236,,Subcortical,Subcortical,L,-3.682397003745322,-8.581273408239696,6.985767790262173
+238,rTtha,Subcortical Nuclei,"Tha, Thalamus", rostral temporal thalamus,0.0,0.0,237,,Subcortical,Subcortical,R,-1.0,-10.852941176470594,2.352941176470594
+239,PPtha,Subcortical Nuclei,"Tha, Thalamus", posterior parietal thalamus,0.0,0.0,238,,Subcortical,Subcortical,L,-16.30419222903886,-24.19734151329243,6.140081799591002
+240,PPtha,Subcortical Nuclei,"Tha, Thalamus", posterior parietal thalamus,0.0,0.0,239,,Subcortical,Subcortical,R,15.364561027837254,-25.36777301927195,6.047109207708786
+241,Otha,Subcortical Nuclei,"Tha, Thalamus", occipital thalamus,0.0,0.0,240,,Subcortical,Subcortical,L,-14.856822010106685,-28.217855137563163,3.850084222346993
+242,Otha,Subcortical Nuclei,"Tha, Thalamus", occipital thalamus,0.0,0.0,241,,Subcortical,Subcortical,R,13.053984575835472,-28.022279348757493,7.271636675235641
+243,cTtha,Subcortical Nuclei,"Tha, Thalamus", caudal temporal thalamus,0.0,0.0,242,,Subcortical,Subcortical,L,-11.470398970398977,-22.097168597168604,12.698841698841704
+244,cTtha,Subcortical Nuclei,"Tha, Thalamus", caudal temporal thalamus,0.0,0.0,243,,Subcortical,Subcortical,R,9.481907894736835,-13.82976973684211,13.899671052631575
+245,lPFtha,Subcortical Nuclei,"Tha, Thalamus", lateral pre-frontal thalamus,0.0,0.0,244,,Subcortical,Subcortical,L,-11.291851346743954,-14.455847255369932,2.211387657688377
+246,lPFtha,Subcortical Nuclei,"Tha, Thalamus", lateral pre-frontal thalamus,0.0,0.0,245,,Subcortical,Subcortical,R,12.541482572410402,-16.26067746686303,6.649975454099163
+247,Cereb,Cerebellum,Cerebellum,Unknown,,,246,,,,,-7.655987275619182,-43.89752329016133,-17.342876618950235
+248,Cereb,Cerebellum,Cerebellum,Unknown,,,247,,,,,9.64879649890591,-43.43599562363238,-18.194566010211524
+249,Cereb,Cerebellum,Cerebellum,Unknown,,,248,,,,,-13.708817126269963,-49.49274310595065,-19.179970972423803
+250,Cereb,Cerebellum,Cerebellum,Unknown,,,249,,,,,13.94908497916289,-51.29552455154919,-18.723500634172854
+251,Cereb,Cerebellum,Cerebellum,Unknown,,,250,,,,,-22.58059642147117,-58.66990059642147,-24.982425447316103
+252,Cereb,Cerebellum,Cerebellum,Unknown,,,251,,,,,-2.732382550335572,-70.76593959731544,-21.41442953020134
+253,Cereb,Cerebellum,Cerebellum,Unknown,,,252,,,,,24.43507261060452,-58.1160081053698,-25.24164133738602
+254,Cereb,Cerebellum,Cerebellum,Unknown,,,253,,,,,-36.05682410593265,-68.36737566468565,-31.881972682723383
+255,Cereb,Cerebellum,Cerebellum,Unknown,,,254,,,,,-4.0,-78.2,-26.6
+256,Cereb,Cerebellum,Cerebellum,Unknown,,,255,,,,,37.82018021586296,-67.64536092682444,-31.678235468858304
+257,Cereb,Cerebellum,Cerebellum,Unknown,,,256,,,,,-26.020366732154557,-74.75383104125737,-42.31814014407335
+258,Cereb,Cerebellum,Cerebellum,Unknown,,,257,,,,,-2.267605633802816,-74.87323943661971,-30.868544600938968
+259,Cereb,Cerebellum,Cerebellum,Unknown,,,258,,,,,26.57925595030362,-75.64326097578,-41.33286801144692
+260,Cereb,Cerebellum,Cerebellum,Unknown,,,259,,,,,-26.118557453642865,-65.76230106584903,-50.98496130822018
+261,Cereb,Cerebellum,Cerebellum,Unknown,,,260,,,,,-3.1512605042016872,-68.57142857142857,-31.48739495798319
+262,Cereb,Cerebellum,Cerebellum,Unknown,,,261,,,,,28.199971815107105,-65.72547914317926,-50.62556369785795
+263,Cereb,Cerebellum,Cerebellum,Unknown,,,262,,,,,-23.87484355444306,-57.35747809762202,-52.92709637046307
+264,Cereb,Cerebellum,Cerebellum,Unknown,,,263,,,,,-3.3144475920679923,-66.94475920679886,-37.86260623229462
+265,Cereb,Cerebellum,Cerebellum,Unknown,,,264,,,,,25.804812434613662,-57.90076221790464,-53.09938723658646
+266,Cereb,Cerebellum,Cerebellum,Unknown,,,265,,,,,-16.50046580957705,-50.51444009688839,-54.80119247251723
+267,Cereb,Cerebellum,Cerebellum,Unknown,,,266,,,,,-3.195710455764072,-63.265415549597854,-42.0402144772118
+268,Cereb,Cerebellum,Cerebellum,Unknown,,,267,,,,,17.971892458100555,-50.87360335195531,-55.038931564245814
+269,Cereb,Cerebellum,Cerebellum,Unknown,,,268,,,,,-6.572578841422498,-53.46991724446433,-48.207336166405724
+270,Cereb,Cerebellum,Cerebellum,Unknown,,,269,,,,,-2.5862068965517295,-55.947126436781616,-37.0
+271,Cereb,Cerebellum,Cerebellum,Unknown,,,270,,,,,6.941097979412888,-53.62657262676325,-48.6208539839878
+272,Cereb,Cerebellum,Cerebellum,Unknown,,,271,,,,,-20.483408071748883,-36.875336322869956,-45.460089686098655
+273,Cereb,Cerebellum,Cerebellum,Unknown,,,272,,,,,-1.8571428571428612,-47.949579831932766,-35.05882352941177
+274,Cereb,Cerebellum,Cerebellum,Unknown,,,273,,,,,22.01234567901234,-37.08559670781894,-45.62880658436214
