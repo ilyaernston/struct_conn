@@ -13,28 +13,6 @@ import time
 from preprocessing import drop_cerebellum, connect_components, normalize
 
 
-def compute_node_participation(cliques_df: pd.DataFrame, num_nodes: int) -> Dict[int, int]:
-    """Compute the number of maximal cliques each node participates in.
-    
-    Optimized version using vectorized operations where possible.
-    
-    Args:
-        cliques_df (pd.DataFrame): DataFrame with 'nodes' column containing lists of node indices.
-        num_nodes (int): Total number of nodes in the network.
-        
-    Returns:
-        Dict[int, int]: Dictionary mapping node index to participation count.
-    """
-    # Initialize participation count for all nodes
-    participation = {node: 0 for node in range(num_nodes)}
-    
-    # Optimized: flatten all nodes and count in one pass
-    all_nodes = [node for nodes_list in cliques_df['nodes'] for node in nodes_list]
-    for node in all_nodes:
-        participation[node] += 1
-    
-    return participation
-
 def compute_clique_metrics(clique: list, g: Graph) -> List[float]:
     """Compute various metrics for a clique.
     
@@ -55,13 +33,15 @@ def compute_clique_metrics(clique: list, g: Graph) -> List[float]:
     return [float(s), float(vol), float(avg_deg), float(n_bound_edges), float(bound_ratio), float(avg_embed)]
 
 
-def detect_cliques(matrix: np.ndarray, min_size: int = 4) -> pd.DataFrame:
+def detect_cliques(matrix: np.ndarray, 
+                   min_size: Optional[int] = None, 
+                   max_size: Optional[int] = None) -> pd.DataFrame:
     """Detect all maximal cliques and compute their properties.
     
     Args:
         matrix (np.ndarray): Adjacency matrix representing the graph.
-        min_size (int): Minimum clique size to detect. Default is 4.
-        
+        min_size (Optional[int]): Minimum clique size to detect. Default is 4.
+        max_size (Optional[int]): Maximum clique size to detect. Default is None (decects [min_size; +∞]).
     Returns:
         pd.DataFrame: DataFrame with columns:
             - clique_index: Index of the clique
@@ -77,7 +57,12 @@ def detect_cliques(matrix: np.ndarray, min_size: int = 4) -> pd.DataFrame:
     graph = Graph.Weighted_Adjacency(matrix.tolist(), mode='undirected', attr='weight', loops='ignore')
     
     # Find maximal cliques (min size specified by parameter)
-    cliques = graph.maximal_cliques(min=min_size)
+    if max_size is None:
+        cliques = graph.maximal_cliques(min=min_size)
+    elif min_size is None:
+        cliques = graph.maximal_cliques(max=max_size)
+    else:
+        cliques = graph.maximal_cliques(min=min_size, max=max_size)
     
     # Prepare data for DataFrame
     clique_data = []
@@ -181,25 +166,28 @@ def map_cliques_to_regions(cliques_df: pd.DataFrame, mapping_df: pd.DataFrame) -
     return result_df
 
 
-def analyze_single_matrix(matrix: np.ndarray, mapping_df: pd.DataFrame, 
-                          subject_id: str = '', min_clique_size: int = 4) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def analyze_single_matrix(matrix: np.ndarray, 
+                          mapping_df: pd.DataFrame, 
+                          subject_id: str = '', 
+                          min_clique_size: Optional[int] = None,
+                          max_clique_size: Optional[int] = None
+                          ) -> pd.DataFrame:
     """Perform complete clique analysis on a single connectivity matrix.
     
     Args:
         matrix (np.ndarray): Connectivity matrix.
         mapping_df (pd.DataFrame): Brain region mapping DataFrame.
         subject_id (str): Identifier for the subject.
-        min_clique_size (int): Minimum clique size to detect. Default is 4.
-        
+        min_clique_size (Optional[int]): Minimum clique size to detect. Default is 4.
+        max_clique_size (Optional[int]): Maximum clique size to detect. Default is None (detects [min_size; +∞]).
     Returns:
-        Tuple[pd.DataFrame, pd.DataFrame]: 
+        pd.DataFrame:
             - DataFrame with clique measures (with subject_id column)
-            - DataFrame with node participation (columns: node_id, n_cliques)
     """
-    print(f"Analyzing matrix{' for ' + subject_id if subject_id else ''}...")
+    print(f"Analyzing matrix...")
     
     # Detect cliques and compute properties
-    cliques_df = detect_cliques(matrix, min_size=min_clique_size)
+    cliques_df = detect_cliques(matrix, min_size=min_clique_size, max_size=max_clique_size)
     print(f"  Found {len(cliques_df)} maximal cliques")
     
     # Check if any cliques were found
@@ -216,14 +204,7 @@ def analyze_single_matrix(matrix: np.ndarray, mapping_df: pd.DataFrame,
             'lobes', 'lobe_primary', 'hemispheres'
         ])
         
-        # Create empty DataFrame with correct structure for node participation
-        num_nodes = matrix.shape[0]
-        empty_nodes = pd.DataFrame([
-            {'subject_id': subject_id, 'node_id': node, 'n_cliques': 0}
-            for node in range(num_nodes)
-        ])
-        
-        return empty_cliques, empty_nodes
+        return empty_cliques
     
     print(f"  Max clique size: {cliques_df['clique_size'].max()}, minimum clique size: {cliques_df['clique_size'].min()}")
     print(f"  Average clique size: {cliques_df['clique_size'].mean():.4f}")
@@ -239,32 +220,27 @@ def analyze_single_matrix(matrix: np.ndarray, mapping_df: pd.DataFrame,
     # Add subject_id as first column to clique DataFrame
     cliques_with_regions.insert(0, 'subject_id', subject_id)
     
-    # Compute node participation
-    num_nodes = matrix.shape[0]
-    node_participation = compute_node_participation(cliques_df, num_nodes)
-    print(f"  Computed node participation for {num_nodes} nodes")
-    
-    # Create node participation DataFrame
-    node_participation_df = pd.DataFrame([
-        {'node_id': node, 'n_cliques': count}
-        for node, count in sorted(node_participation.items())
-    ])
-
-    # Add subject_id to node participation DataFrame
-    node_participation_df.insert(0, 'subject_id', subject_id)
-    
-    return cliques_with_regions, node_participation_df
+    return cliques_with_regions
 
 
-def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str, min_clique_size: int = 4, export_mode: str = 'csv') -> None:
+def main(connectivity_files: List[str], 
+         mapping_file: str, 
+         output_base_dir: str, 
+         min_clique_size: Optional[int] = None, 
+         max_clique_size: Optional[int] = None, 
+         export_mode: str = 'csv',
+         check_components: bool = False,
+         ):
     """Main function to run clique analysis on multiple connectivity matrices.
     
     Args:
         connectivity_files (List[str]): List of paths to connectivity matrix files.
         mapping_file (str): Path to mapping CSV file.
         output_base_dir (str): Base directory for output files.
-        min_clique_size (int): Minimum clique size to detect. Default is 4.
+        min_clique_size (Optional[int]): Minimum clique size to detect. Default is 4.
+        max_clique_size (Optional[int]): Maximum clique size to detect. Default is None (detects [min_size; +∞]).
     """
+
     # Load brain region mapping
     print(f"Loading brain region mapping from {mapping_file}...")
     mapping_df = pd.read_csv(mapping_file)
@@ -272,7 +248,6 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
     
     # Collect results from all subjects
     all_clique_measures = []
-    all_node_participation = []
     
     for conn_file in connectivity_files:
 
@@ -280,36 +255,37 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
         
         # Extract subject ID from filename
         subject_id = Path(conn_file).stem
+        subject_id_short = subject_id.split('_')[0]  # e.g., 'sub-01'
         
         # Load connectivity matrix
-        print(f"\nLoading connectivity matrix: {conn_file}")
+        print(f"\nLoading connectivity matrix for subject: {subject_id_short}")
         matrix = np.loadtxt(conn_file, delimiter=',')
         print(f"  Matrix shape: {matrix.shape}")
 
         # Preprocess matrix
         print(f"Preprocessing matrix...")
         matrix = drop_cerebellum(matrix, mapping_df)
-        matrix = connect_components(matrix, mapping_df)
+        matrix = connect_components(matrix, mapping_df, return_altered_nodes=False)
         matrix = normalize(matrix) #type: ignore
         print(f"  Preprocessed matrix shape: {matrix.shape}")
         
-        # Check connectivity with igraph
-        g = Graph.Weighted_Adjacency(matrix.tolist(), mode='undirected', attr='weight', loops='ignore')
-        components = len(g.clusters())
-        print(f"  Connected components: {components}")
-        print(f"  Min value: {matrix.min()}, Max value: {matrix.max()}")
-        del g, components
+        if check_components:
+            # Check connectivity with igraph
+            g = Graph.Weighted_Adjacency(matrix.tolist(), mode='undirected', attr='weight', loops='ignore')
+            components = len(g.connected_components(mode='weak'))
+            print(f"  Connected components: {components}")
+            print(f"  Min value: {matrix.min()}, Max value: {matrix.max()}")
+            del g, components
 
         # Run analysis
-        clique_measures, node_participation = analyze_single_matrix(matrix, mapping_df, subject_id, min_clique_size)
+        clique_measures = analyze_single_matrix(matrix, mapping_df, subject_id, min_clique_size, max_clique_size)
         
         # Collect results
         all_clique_measures.append(clique_measures)
-        all_node_participation.append(node_participation)
 
         time_end = time.time()
         elapsed = time_end - time_start
-        print(f"Completed analysis for {subject_id} in {elapsed:.2f} seconds")
+        print(f"Completed analysis for {subject_id_short} in {elapsed:.2f} seconds")
         print("\n")
 
     
@@ -317,7 +293,6 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
     if all_clique_measures:
         # Create consolidated DataFrames
         clique_measures_combined = pd.concat(all_clique_measures, ignore_index=True)
-        node_participation_combined = pd.concat(all_node_participation, ignore_index=True)
         
         # Create output directory
         output_path = Path(output_base_dir)
@@ -338,15 +313,12 @@ def main(connectivity_files: List[str], mapping_file: str, output_base_dir: str,
 
         if export_mode in ['csv', 'both']:
             clique_measures_path = output_path / 'clique_measures.csv'
-            node_participation_path = output_path / 'node_participation.csv'
             export_clique.to_csv(clique_measures_path, index=False)
-            node_participation_combined.to_csv(node_participation_path, index=False)
 
         if export_mode in ['parquet', 'both']:
             clique_measures_parquet_path = output_path / 'clique_measures.parquet'
-            node_participation_parquet_path = output_path / 'node_participation.parquet'
             export_clique.to_parquet(clique_measures_parquet_path, index=False)
-            node_participation_combined.to_parquet(node_participation_parquet_path, index=False)
+
             
     print("\nAnalysis complete!")
 
@@ -357,16 +329,18 @@ if __name__ == "__main__":
     default_mapping_file = os.path.join(os.path.dirname(script_dir), 'data', 'mapping.csv')
 
     parser = argparse.ArgumentParser(description='Clique Analysis for Structural Connectivity Networks')
-    parser.add_argument('--data_dir', type=str, default=default_data_dir,
+    parser.add_argument('-d', '--data_dir', type=str, default=default_data_dir,
                         help='Directory containing connectivity matrix files (.csv or .npy)')
-    parser.add_argument('--output_dir', type=str, default=None,
+    parser.add_argument('-o', '--output_dir', type=str, default=None,
                         help='Output directory for results and visualizations')
-    parser.add_argument('--mapping_file', type=str, default=default_mapping_file,
+    parser.add_argument('-m', '--mapping_file', type=str, default=default_mapping_file,
                         help='Path to brain region mapping CSV file')
     parser.add_argument('--pattern', type=str, default='*.csv',
                         help='File pattern to match (e.g., "*.csv", "*.npy")')
-    parser.add_argument('--min_clique', type=int, default=4,
+    parser.add_argument('--min_size', type=int, default=4,
                         help='Minimum clique size to detect (default: 4)')
+    parser.add_argument('--max_size', type=int, default=None,
+                        help='Maximum clique size to detect (default: None, meaning no upper limit)')
     parser.add_argument('--export_mode', type=str, choices=['csv', 'parquet', 'both'], default='csv',
                         help='Export format for results (default: csv)')
 
@@ -387,9 +361,10 @@ if __name__ == "__main__":
     if connectivity_files:
         print(f"Found {len(connectivity_files)} connectivity files in {args.data_dir}")
         print(f"Output will be saved to: {args.output_dir}")
-        print(f"Minimum clique size: {args.min_clique}")
+        print(f"Minimum clique size: {args.min_size}")
+        print(f"Maximum clique size: {args.max_size}")
         print(f"Export mode: {args.export_mode}")
-        main(connectivity_files, args.mapping_file, args.output_dir, args.min_clique, args.export_mode)
+        main(connectivity_files, args.mapping_file, args.output_dir, args.min_size, args.max_size, args.export_mode)
     else:
         print(f"No connectivity files found matching pattern '{args.pattern}' in {args.data_dir}")
         print("Please check the data directory and pattern.")
