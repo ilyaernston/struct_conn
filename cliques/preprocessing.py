@@ -4,7 +4,7 @@ Functions to preprocess DTI connectomes with faan-2016 parcellation
 
 import numpy as np
 import pandas as pd
-import networkx as nx
+import igraph as ig
 import random
 from typing import Tuple, List
 
@@ -41,21 +41,24 @@ def connect_components(matrix: np.ndarray,
         List of altered/connected nodes (only if return_altered_nodes is True).
     """
 
-    graph = nx.from_numpy_array(matrix)
+    # Create weighted graph from adjacency matrix
+    graph = ig.Graph.Weighted_Adjacency(matrix.tolist(), mode="undirected")
 
     conn_nodes_list = []
-    comps = list(nx.connected_components(graph))
-    n_components = nx.number_connected_components(graph)
+    components = graph.connected_components(mode="weak")
+    n_components = len(components)
     
     if n_components > 1:
-        main_comp = max(comps, key=len)
+        # Find largest component
+        main_comp_idx = max(range(n_components), key=lambda i: len(components[i]))
+        main_comp = components[main_comp_idx]
         main_nodes = set(main_comp)
     
-        for comp in comps:
-            if comp is main_comp:
+        for i, comp in enumerate(components):
+            if i == main_comp_idx:
                 continue
             else:
-                u = random.choice(list(comp))
+                u = random.choice(comp)
                 attr_u = mapping.iloc[u]
                 hemi_u = attr_u['Hemi']
                 gyrus_u = attr_u['Gyrus']
@@ -82,10 +85,11 @@ def connect_components(matrix: np.ndarray,
                 graph.add_edge(u, v, weight=avg_w)
                 conn_nodes_list.append({u: v})
         
-        connected_matrix = nx.to_numpy_array(graph)
+        # Convert back to numpy array
+        connected_matrix = np.array(graph.get_adjacency(attribute='weight').data)
     else:
         conn_nodes_list = []
-        connected_matrix = nx.to_numpy_array(graph)
+        connected_matrix = np.array(graph.get_adjacency(attribute='weight').data)
 
     if return_altered_nodes:
         return connected_matrix, conn_nodes_list
