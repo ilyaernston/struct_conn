@@ -99,8 +99,10 @@ def calculate_loop_incidence(clique_measures_df, h1_loops_df):
         
         loop_incidence_list.append(incidence)
         
-        if (idx + 1) % 1000 == 0:
-            print(f"  Processed {idx + 1}/{len(clique_measures_df)} cliques")
+        # Print progress every 10%
+        if (idx + 1) % max(1, len(clique_measures_df) // 10) == 0:  
+            pc = (idx + 1) / len(clique_measures_df) * 100
+            print(f"  Processed {idx + 1}/{len(clique_measures_df)} cliques ({pc:.1f}%)")
     
     # Add loop_incidence column to DataFrame
     result_df = clique_measures_df.copy()
@@ -125,7 +127,7 @@ def main():
                         help='Path to clique_measures file (CSV or Parquet)')
     parser.add_argument('-o', '--output_dir', type=str, default=None,
                         help='Output directory for results (default: auto-generated)')
-    parser.add_argument('--export_mode', type=str, choices=['csv', 'parquet', 'both'], default='csv',
+    parser.add_argument('--export_format', type=str, choices=['csv', 'parquet', 'both'], default='csv',
                         help='Export format for results (default: csv)')
     
     args = parser.parse_args()
@@ -169,12 +171,12 @@ def main():
     output_path = Path(args.output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    if args.export_mode in ['csv', 'both']:
+    if args.export_format in ['csv', 'both']:
         csv_path = output_path / 'clique_measures_with_loop_incidence.csv'
         clique_with_incidence.to_csv(csv_path, index=False)
         print(f"\nSaved clique measures with loop incidence to {csv_path}")
 
-    if args.export_mode in ['parquet', 'both']:
+    if args.export_format in ['parquet', 'both']:
         parquet_path = output_path / 'clique_measures_with_loop_incidence.parquet'
         clique_with_incidence.to_parquet(parquet_path, index=False)
         print(f"\nSaved clique measures with loop incidence to {parquet_path}")

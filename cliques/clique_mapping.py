@@ -526,13 +526,13 @@ if __name__ == "__main__":
                         help='Output directory for results and visualizations')
     parser.add_argument('-m', '--mapping_file', type=str, default=default_mapping_file,
                         help='Path to brain region mapping CSV file')
-    parser.add_argument('--pattern', type=str, default='*.csv',
+    parser.add_argument('--input_format', type=str, default='*.csv',
                         help='File pattern to match (e.g., "*.csv", "*.npy")')
     parser.add_argument('--min_size', type=int, default=4,
                         help='Minimum clique size to detect (default: 4)')
     parser.add_argument('--max_size', type=int, default=None,
                         help='Maximum clique size to detect (default: None, meaning no upper limit)')
-    parser.add_argument('--export_mode', type=str, choices=['csv', 'parquet', 'both'], default='csv',
+    parser.add_argument('--export_format', type=str, choices=['csv', 'parquet', 'both'], default='csv',
                         help='Export format for results (default: csv)')
     parser.add_argument('--no_richclub', action='store_true',
                         help='Skip rich-clubness computation (faster but less complete)')
@@ -551,19 +551,19 @@ if __name__ == "__main__":
     print(f"Starting clique analysis...")
 
     # Find all connectivity files matching pattern
-    connectivity_files = glob.glob(os.path.join(args.data_dir, args.pattern))
+    connectivity_files = glob.glob(os.path.join(args.data_dir, args.input_format))
     
     if connectivity_files:
         print(f"Found {len(connectivity_files)} connectivity files in {args.data_dir}")
         print(f"Output will be saved to: {args.output_dir}")
         print(f"Minimum clique size: {args.min_size}")
         print(f"Maximum clique size: {args.max_size}")
-        print(f"Export mode: {args.export_mode}")
+        print(f"Export format: {args.export_format}")
         print(f"Compute rich-clubness: {not args.no_richclub}")
         if not args.no_richclub:
             print(f"Random networks for null model: {args.n_random}")
         main(connectivity_files, args.mapping_file, args.output_dir, args.min_size, args.max_size, 
-             args.export_mode, compute_richclub=not args.no_richclub, n_random=args.n_random)
+             args.export_format, compute_richclub=not args.no_richclub, n_random=args.n_random)
     else:
-        print(f"No connectivity files found matching pattern '{args.pattern}' in {args.data_dir}")
-        print("Please check the data directory and pattern.")
+        print(f"No connectivity files found matching pattern '{args.input_format}' in {args.data_dir}")
+        print("Please check the data directory and input format.")
