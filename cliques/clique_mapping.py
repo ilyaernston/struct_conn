@@ -178,24 +178,110 @@ def compute_clique_metrics(clique: list, g: Graph, graph_richclub_stats: Optiona
         graph_richclub_stats: Optional pre-computed graph statistics for rich-clubness computation.
         
     Returns:
-        List of metrics: [size, volume, avg_degree, boundary_edges, boundary_ratio, avg_embeddedness, 
-                         rich_clubness_raw, rich_clubness_norm]
+        List of metrics: [size, clique_degree, avg_node_degree, clique_outer_degree, boundary_ratio, boundary_ratio_weighted,
+                         avg_embeddedness, avg_embeddedness_w, rich_clubness_norm, inner_weight_density, weight_gini, 
+                         outer_strength_entropy, inner_strength_entropy, outer_weight_gini]
     """
-    s = len(clique) # size of clique
-    vol = sum(g.degree(v) for v in clique) # volume: sum of degrees of all nodes in the clique
-    avg_deg = vol / s if s else 0.0 # average degree of nodes in the clique
-    n_bound_edges = sum(g.degree(v) - (s - 1) for v in clique) # number of boundary edges: sum of external degrees of all nodes in the clique
-    bound_ratio = n_bound_edges / vol if vol else 0.0 # boundary ratio (aka conductance): ratio of boundary edges to volume
-    avg_embed = sum((s - 1) / g.degree(v) if g.degree(v) > 0 else 0.0 for v in clique) / s if s else 0.0 # average node embeddedness in the clique
+    k = len(clique) # size of clique
+    d_C = sum(g.degree(v) for v in clique) # clique degree (d_C): sum of degrees of all nodes in the clique
+    d_C_weighted = sum(g.strength(v) for v in clique) # weighted clique degree (d_C^w): sum of strengths of all nodes in the clique
+    avg_node_degree = d_C / k if k else 0.0 # average node degree in the clique
+    delta_C = sum(g.degree(v) - (k - 1) for v in clique) # clique outer degree (δ_C): sum of outer degrees of all nodes in the clique
+    bound_ratio = delta_C / d_C if d_C else 0.0 # boundary ratio (conductance): ratio of outer degree to clique degree
+    avg_embed = sum((k - 1) / g.degree(v) if g.degree(v) > 0 else 0.0 for v in clique) / k if k else 0.0 # average node embeddedness in the clique: average of (k_in(v) / degree(v)) for nodes in the clique, where k_in(v) = k - 1 is the number of edges node v has to other nodes in the clique
+    avg_embed_w = sum((d_C_weighted - g.strength(v)) / g.strength(v) if g.strength(v) > 0 else 0.0 for v in clique) / k if k else 0.0 # weighted average node embeddedness: average of (w_in(v) / strength(v)) for nodes in the clique, where w_in(v) = d_C_weighted - strength(v) is the total weight of edges node v has to other nodes in the clique (approximated as total clique strength minus node's own strength)
+    
+    # Compute inner edge weights for additional metrics
+    inner_weights = []
+    w_c = 0.0
+    for i, node_i in enumerate(clique):
+        for node_j in clique[i+1:]:
+            eid = g.get_eid(node_i, node_j, error=False)
+            if eid != -1:
+                weight = g.es[eid]['weight']
+                inner_weights.append(weight)
+                w_c += weight
+    
+    # 1. Inner edge weight density: ρ_w(C) = W_C / E_C
+    n_edges_clique = k * (k - 1) // 2
+    inner_weight_density = w_c / n_edges_clique if n_edges_clique > 0 else 0.0
+    
+    # 5. Weight concentration (Gini coefficient)
+    if len(inner_weights) > 1 and w_c > 0:
+        weights_arr = np.array(inner_weights)
+        # Gini = sum_i sum_j |w_i - w_j| / (2 * E_C * sum w_i)
+        n = len(weights_arr)
+        gini_sum = 0.0
+        for i in range(n):
+            for j in range(n):
+                gini_sum += abs(weights_arr[i] - weights_arr[j])
+        weight_gini = gini_sum / (2.0 * n * w_c)
+    else:
+        weight_gini = 0.0
+    
+    # 6. Outer strength distribution entropy & inner strength per node
+    outer_strengths = []
+    inner_strengths = []
+    total_outer_strength = 0.0
+    total_inner_strength = 0.0
+    for v in clique:
+        node_strength = g.strength(v, weights='weight')
+        # Compute inner strength (sum of weights to other clique nodes)
+        inner_strength = 0.0
+        for u in clique:
+            if u != v:
+                eid = g.get_eid(v, u, error=False)
+                if eid != -1:
+                    inner_strength += g.es[eid]['weight']
+        outer_strength = node_strength - inner_strength
+        outer_strengths.append(outer_strength)
+        total_outer_strength += outer_strength
+        inner_strengths.append(inner_strength)
+        total_inner_strength += inner_strength
+    
+    if total_outer_strength > 0:
+        outer_strength_entropy = 0.0
+        for s_out in outer_strengths:
+            if s_out > 0:
+                p = s_out / total_outer_strength
+                outer_strength_entropy -= p * np.log(p)
+    else:
+        outer_strength_entropy = 0.0
+    
+    # Weighted boundary ratio: BR_w(C) = outer_strength / total_strength
+    bound_ratio_weighted = total_outer_strength / d_C_weighted if d_C_weighted > 0 else 0.0
+    
+    # Outer weight Gini coefficient: Gini over per-node outer strengths
+    if len(outer_strengths) > 1 and total_outer_strength > 0:
+        os_arr = np.array(outer_strengths)
+        n_os = len(os_arr)
+        gini_sum_outer = 0.0
+        for i in range(n_os):
+            for j in range(n_os):
+                gini_sum_outer += abs(os_arr[i] - os_arr[j])
+        outer_weight_gini = gini_sum_outer / (2.0 * n_os * total_outer_strength)
+    else:
+        outer_weight_gini = 0.0
+    
+    # Inner strength distribution entropy
+    if total_inner_strength > 0:
+        inner_strength_entropy = 0.0
+        for s_in in inner_strengths:
+            if s_in > 0:
+                p = s_in / total_inner_strength
+                inner_strength_entropy -= p * np.log(p)
+    else:
+        inner_strength_entropy = 0.0
     
     # Compute rich-clubness if graph_richclub_stats provided
     if graph_richclub_stats is not None:
-        rc_raw, rc_norm = clique_rich_clubness(g, clique, graph_richclub_stats)
+        _, rc_norm = clique_rich_clubness(g, clique, graph_richclub_stats)
     else:
-        rc_raw, rc_norm = 0.0, 0.0
+        _, rc_norm = 0.0, 0.0
 
-    return [float(s), float(vol), float(avg_deg), float(n_bound_edges), float(bound_ratio), float(avg_embed), 
-            float(rc_raw), float(rc_norm)]
+    return [float(k), float(d_C), float(avg_node_degree), float(delta_C), float(bound_ratio), float(bound_ratio_weighted),
+            float(avg_embed), float(avg_embed_w), float(rc_norm), float(inner_weight_density), float(weight_gini), 
+            float(outer_strength_entropy), float(inner_strength_entropy), float(outer_weight_gini)]
 
 
 def detect_cliques(matrix: np.ndarray, 
@@ -216,13 +302,19 @@ def detect_cliques(matrix: np.ndarray,
             - clique_index: Index of the clique
             - nodes: List of nodes in the clique
             - clique_size: Number of nodes in the clique
-            - clique_volume: Volume (sum of degrees) of the clique
-            - clique_avg_degree: Average degree of nodes in the clique
-            - clique_boundary_edges: Number of boundary edges
+            - clique_degree: Clique degree (sum of degrees) of the clique
+            - avg_node_degree: Average degree of nodes in the clique
+            - clique_outer_degree: Clique outer degree (number of outer edges)
             - clique_boundary_ratio: Boundary ratio (conductance)
-            - clique_avg_embeddedness: Average node embeddedness
-            - clique_richclub_raw: Raw weighted rich-clubness φ_w(C)
+            - clique_boundary_ratio_weighted: Weighted boundary ratio (outer strength / total strength)
+            - avg_node_embeddedness: Average node embeddedness
+            - avg_node_embeddedness_weighted: Average node embeddedness (weighted)
             - clique_richclub_norm: Normalized weighted rich-clubness φ_w^norm(C)
+            - clique_inner_weight_density: Average weight per inner edge
+            - clique_weight_gini: Gini coefficient of inner edge weights
+            - clique_outer_strength_entropy: Entropy of outer strength distribution
+            - clique_inner_strength_entropy: Entropy of inner strength distribution
+            - clique_outer_weight_gini: Gini coefficient of per-node outer strengths
     """
     # Create igraph graph
     graph = Graph.Weighted_Adjacency(matrix.tolist(), mode='undirected', attr='weight', loops='ignore')
@@ -247,20 +339,27 @@ def detect_cliques(matrix: np.ndarray,
     for idx, clique in enumerate(cliques):
         # Compute metrics using the integrated function
         metrics = compute_clique_metrics(clique, graph, graph_richclub_stats)
-        # metrics = [size, volume, avg_degree, boundary_edges, boundary_ratio, avg_embeddedness, 
-        #            richclub_raw, richclub_norm]
+        # metrics = [size, clique_degree, avg_node_degree, clique_outer_degree, boundary_ratio, boundary_ratio_weighted,
+        #            avg_embeddedness, avg_embeddedness_w, richclub_norm, inner_weight_density, weight_gini, 
+        #            outer_strength_entropy, inner_strength_entropy, outer_weight_gini]
         
         clique_data.append({
             'clique_index': idx,
             'nodes': list(clique),  # Convert to list for DataFrame storage
             'clique_size': int(metrics[0]),
-            'clique_volume': int(metrics[1]),
-            'clique_avg_degree': metrics[2],
-            'clique_boundary_edges': int(metrics[3]),
+            'clique_degree': int(metrics[1]),
+            'avg_node_degree': metrics[2],
+            'clique_outer_degree': int(metrics[3]),
             'clique_boundary_ratio': metrics[4],
-            'clique_avg_embeddedness': metrics[5],
-            'clique_richclub_raw': metrics[6],
-            'clique_richclub_norm': metrics[7]
+            'clique_boundary_ratio_weighted': metrics[5],
+            'avg_node_embeddedness': metrics[6],
+            'avg_node_embeddedness_weighted': metrics[7],
+            'clique_richclub_norm': metrics[8],
+            'clique_inner_weight_density': metrics[9],
+            'clique_weight_gini': metrics[10],
+            'clique_outer_strength_entropy': metrics[11],
+            'clique_inner_strength_entropy': metrics[12],
+            'clique_outer_weight_gini': metrics[13]
         })
     
     return pd.DataFrame(clique_data)
@@ -382,23 +481,31 @@ def analyze_single_matrix(matrix: np.ndarray,
         
         # Create empty DataFrame with correct structure for cliques
         empty_cliques = pd.DataFrame(columns=[
-            'subject_id', 'clique_index', 'nodes', 'clique_size', 'clique_volume',
-            'clique_avg_degree', 'clique_boundary_edges', 'clique_boundary_ratio',
-            'clique_avg_embeddedness', 'clique_richclub_raw', 'clique_richclub_norm',
-            'yeo7_networks', 'yeo7_primary', 'yeo17_networks', 'yeo17_primary', 
-            'gyrus_regions', 'gyrus_primary', 'lobes', 'lobe_primary', 'hemispheres'
+            'subject_id', 'clique_index', 'nodes', 'clique_size', 'clique_degree',
+            'avg_node_degree', 'clique_outer_degree', 'clique_boundary_ratio', 'clique_boundary_ratio_weighted',
+            'avg_node_embeddedness', 'avg_node_embeddedness_weighted', 'clique_richclub_norm',
+            'clique_inner_weight_density', 'clique_weight_gini', 'clique_outer_strength_entropy',
+            'clique_inner_strength_entropy', 'clique_outer_weight_gini', 'yeo7_networks', 'yeo7_primary', 'yeo17_networks', 
+            'yeo17_primary', 'gyrus_regions', 'gyrus_primary', 'lobes', 'lobe_primary', 'hemispheres'
         ])
         
         return empty_cliques
     
     print(f"  Max clique size: {cliques_df['clique_size'].max()}, minimum clique size: {cliques_df['clique_size'].min()}")
     print(f"  Average clique size: {cliques_df['clique_size'].mean():.4f}")
-    print(f"  Average volume: {cliques_df['clique_volume'].mean():.4f}")
-    print(f"  Average degree: {cliques_df['clique_avg_degree'].mean():.4f}")
+    print(f"  Average clique degree: {cliques_df['clique_degree'].mean():.4f}")
+    print(f"  Average node degree: {cliques_df['avg_node_degree'].mean():.4f}")
+    print(f"  Average clique outer degree: {cliques_df['clique_outer_degree'].mean():.4f}")
     print(f"  Average boundary ratio: {cliques_df['clique_boundary_ratio'].mean():.4f}")
-    print(f"  Average embeddedness: {cliques_df['clique_avg_embeddedness'].mean():.4f}")
-    if compute_richclub and 'clique_richclub_raw' in cliques_df.columns:
-        print(f"  Average rich-clubness (raw): {cliques_df['clique_richclub_raw'].mean():.4f}")
+    print(f"  Average boundary ratio (weighted): {cliques_df['clique_boundary_ratio_weighted'].mean():.4f}")
+    print(f"  Average embeddedness: {cliques_df['avg_node_embeddedness'].mean():.4f}")
+    print(f"  Average embeddedness (weighted): {cliques_df['avg_node_embeddedness_weighted'].mean():.4f}")
+    print(f"  Average inner weight density: {cliques_df['clique_inner_weight_density'].mean():.4f}")
+    print(f"  Average weight Gini: {cliques_df['clique_weight_gini'].mean():.4f}")
+    print(f"  Average outer strength entropy: {cliques_df['clique_outer_strength_entropy'].mean():.4f}")
+    print(f"  Average inner strength entropy: {cliques_df['clique_inner_strength_entropy'].mean():.4f}")
+    print(f"  Average outer weight Gini: {cliques_df['clique_outer_weight_gini'].mean():.4f}")
+    if compute_richclub and 'clique_richclub_norm' in cliques_df.columns:
         print(f"  Average rich-clubness (norm): {cliques_df['clique_richclub_norm'].mean():.4f}")
     
     # Map cliques to regions
@@ -528,8 +635,8 @@ if __name__ == "__main__":
                         help='Path to brain region mapping CSV file')
     parser.add_argument('--input_format', type=str, default='*.csv',
                         help='File pattern to match (e.g., "*.csv", "*.npy")')
-    parser.add_argument('--min_size', type=int, default=4,
-                        help='Minimum clique size to detect (default: 4)')
+    parser.add_argument('--min_size', type=int, default=0,
+                        help='Minimum clique size to detect (default: 0)')
     parser.add_argument('--max_size', type=int, default=None,
                         help='Maximum clique size to detect (default: None, meaning no upper limit)')
     parser.add_argument('--export_format', type=str, choices=['csv', 'parquet', 'both'], default='csv',
